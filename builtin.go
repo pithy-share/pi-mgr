@@ -29,9 +29,16 @@ func IsBuiltInProvider(key string) bool {
 	return false
 }
 
-// ValidAPITypes is the list of API types available for custom providers
+// ValidAPITypes is the list of API types available for custom providers.
+// Source: https://pi.dev/docs/latest/custom-provider
 var ValidAPITypes = []string{
 	"openai-completions",
 	"anthropic-messages",
+	"openai-responses",
+	"azure-openai-responses",
+	"openai-codex-responses",
+	"mistral-conversations",
 	"google-generative-ai",
+	"google-vertex",
+	"bedrock-converse-stream",
 }
