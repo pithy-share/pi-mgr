@@ -29,12 +29,18 @@ export interface AppAPI {
   ExportSchemes(): Promise<void>
   ImportSchemes(): Promise<void>
 
+  // SSH Sync
+  TestSSHConnection(address: string): Promise<{ success: boolean; message: string }>
+  SaveSSHAddress(address: string): Promise<void>
+  LoadSSHAddress(): Promise<string>
+  SyncPiConfig(address: string): Promise<SyncResult>
+
   // Catalog
   ListBuiltInProviders(): Promise<BuiltInProvider[]>
   ListAPITypes(): Promise<string[]>
 }
 
-import type { Scheme, Provider, Model, BuiltInProvider } from '../types'
+import type { Scheme, Provider, Model, BuiltInProvider, SyncResult } from '../types'
 
 function api(): AppAPI {
   if (wails) return wails as unknown as AppAPI
@@ -57,6 +63,10 @@ function api(): AppAPI {
     ImportProviderModels: () => Promise.resolve(0),
     ExportSchemes: () => Promise.resolve(),
     ImportSchemes: () => Promise.resolve(),
+    TestSSHConnection: () => Promise.resolve({ success: false, message: 'dev mode' }),
+    SaveSSHAddress: () => Promise.resolve(),
+    LoadSSHAddress: () => Promise.resolve(''),
+    SyncPiConfig: () => Promise.resolve({ overall: 'failed' as const, items: [] }),
     ListBuiltInProviders: () => Promise.resolve([]),
     ListAPITypes: () => Promise.resolve([]),
   }

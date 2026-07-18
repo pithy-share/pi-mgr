@@ -7,7 +7,7 @@
       </div>
     </header>
     <router-view />
-    <div v-if="toast" :class="['toast', toast.type]">{{ toast.message }}</div>
+    <div v-if="toast" :class="['toast', 'toast-' + toast.type]">{{ toast.message }}</div>
   </div>
 </template>
 

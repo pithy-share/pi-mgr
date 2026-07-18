@@ -18,6 +18,10 @@ export function DuplicateScheme(arg1:string):Promise<main.Scheme>;
 
 export function ExportSchemes():Promise<void>;
 
+export function FetchProviderModels(arg1:string,arg2:string):Promise<Array<main.Model>>;
+
+export function ImportProviderModels(arg1:string,arg2:string,arg3:Array<main.Model>):Promise<number>;
+
 export function ImportSchemes():Promise<void>;
 
 export function ListAPITypes():Promise<Array<string>>;
@@ -26,9 +30,17 @@ export function ListBuiltInProviders():Promise<Array<main.BuiltInProvider>>;
 
 export function ListSchemes():Promise<Array<main.Scheme>>;
 
+export function LoadSSHAddress():Promise<string>;
+
 export function RemoveModel(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function RemoveProvider(arg1:string,arg2:string):Promise<void>;
+
+export function SaveSSHAddress(arg1:string):Promise<void>;
+
+export function SyncPiConfig(arg1:string):Promise<main.SyncResult>;
+
+export function TestSSHConnection(arg1:string):Promise<main.SSHConnectionResult>;
 
 export function UpdateModel(arg1:string,arg2:string,arg3:main.Model):Promise<void>;
 

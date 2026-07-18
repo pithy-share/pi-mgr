@@ -34,6 +34,17 @@ export interface BuiltInProvider {
   apiType: string
 }
 
+export interface SyncItemStatus {
+  name: string
+  status: 'success' | 'skipped' | 'failed'
+  message: string
+}
+
+export interface SyncResult {
+  overall: 'success' | 'partial' | 'failed'
+  items: SyncItemStatus[]
+}
+
 export interface Toast {
   message: string
   type: 'success' | 'error'

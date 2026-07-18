@@ -3,6 +3,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
       <h2>配置方案</h2>
       <div style="display:flex;gap:8px;">
+        <button class="btn-secondary" @click="$router.push('/ssh-sync')">SSH 同步</button>
         <button class="btn-secondary" @click="handleExport">导出全部</button>
         <button class="btn-secondary" @click="handleImport">导入</button>
         <button class="btn-primary" @click="showCreate = true">+ 新建方案</button>

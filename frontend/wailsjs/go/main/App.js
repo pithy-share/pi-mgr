@@ -34,6 +34,14 @@ export function ExportSchemes() {
   return window['go']['main']['App']['ExportSchemes']();
 }
 
+export function FetchProviderModels(arg1, arg2) {
+  return window['go']['main']['App']['FetchProviderModels'](arg1, arg2);
+}
+
+export function ImportProviderModels(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ImportProviderModels'](arg1, arg2, arg3);
+}
+
 export function ImportSchemes() {
   return window['go']['main']['App']['ImportSchemes']();
 }
@@ -50,12 +58,28 @@ export function ListSchemes() {
   return window['go']['main']['App']['ListSchemes']();
 }
 
+export function LoadSSHAddress() {
+  return window['go']['main']['App']['LoadSSHAddress']();
+}
+
 export function RemoveModel(arg1, arg2, arg3) {
   return window['go']['main']['App']['RemoveModel'](arg1, arg2, arg3);
 }
 
 export function RemoveProvider(arg1, arg2) {
   return window['go']['main']['App']['RemoveProvider'](arg1, arg2);
+}
+
+export function SaveSSHAddress(arg1) {
+  return window['go']['main']['App']['SaveSSHAddress'](arg1);
+}
+
+export function SyncPiConfig(arg1) {
+  return window['go']['main']['App']['SyncPiConfig'](arg1);
+}
+
+export function TestSSHConnection(arg1) {
+  return window['go']['main']['App']['TestSSHConnection'](arg1);
 }
 
 export function UpdateModel(arg1, arg2, arg3) {
