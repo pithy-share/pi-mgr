@@ -335,8 +335,8 @@ func TestSerializeModel_DefaultsOmitted(t *testing.T) {
 		Name:          "test-model", // same as ID, should be omitted
 		InputText:     true,          // default, should result in omitted input
 		InputImage:    false,
-		ContextWindow: 128000,        // default, should be omitted
-		MaxTokens:     16384,         // default, should be omitted
+		ContextWindow: 256000,        // default, should be omitted
+		MaxTokens:     64000,         // default, should be omitted
 		Reasoning:     false,
 	}
 
@@ -358,10 +358,10 @@ func TestSerializeModel_DefaultsOmitted(t *testing.T) {
 		t.Error("input should be omitted for default [\"text\"]")
 	}
 	if mj.ContextWindow != nil {
-		t.Error("contextWindow should be omitted at default 128000")
+		t.Error("contextWindow should be omitted at default 256000")
 	}
 	if mj.MaxTokens != nil {
-		t.Error("maxTokens should be omitted at default 16384")
+		t.Error("maxTokens should be omitted at default 64000")
 	}
 	if mj.Cost != nil {
 		t.Error("cost should be omitted when all zero")

@@ -22,6 +22,8 @@ export interface AppAPI {
   AddModel(schemeID: string, providerKey: string, model: Model): Promise<void>
   UpdateModel(schemeID: string, providerKey: string, model: Model): Promise<void>
   RemoveModel(schemeID: string, providerKey: string, modelID: string): Promise<void>
+  FetchProviderModels(schemeID: string, providerKey: string): Promise<Model[]>
+  ImportProviderModels(schemeID: string, providerKey: string, models: Model[]): Promise<number>
 
   // Export / Import
   ExportSchemes(): Promise<void>
@@ -51,6 +53,8 @@ function api(): AppAPI {
     AddModel: () => Promise.resolve(),
     UpdateModel: () => Promise.resolve(),
     RemoveModel: () => Promise.resolve(),
+    FetchProviderModels: () => Promise.resolve([] as Model[]),
+    ImportProviderModels: () => Promise.resolve(0),
     ExportSchemes: () => Promise.resolve(),
     ImportSchemes: () => Promise.resolve(),
     ListBuiltInProviders: () => Promise.resolve([]),

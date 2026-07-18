@@ -163,7 +163,14 @@
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
             <h3>模型列表</h3>
-            <button class="btn-primary btn-small" @click="showAddModel = true">+ 添加模型</button>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <button class="btn-secondary btn-small" @click="handleFetchModels"
+                :disabled="!canFetchModels" :title="fetchButtonTitle">
+                ⟳ 拉取模型列表
+              </button>
+              <span v-if="fetchingModels" class="spinner"></span>
+              <button class="btn-primary btn-small" @click="showAddModel = true">+ 添加模型</button>
+            </div>
           </div>
 
           <div v-if="selectedProvider.models.length === 0" style="color:var(--text-secondary);padding:12px 0;">
@@ -250,6 +257,29 @@
           </div>
         </div>
 
+        <!-- Fetch models dialog -->
+        <div v-if="showFetchDialog" class="modal-overlay" @click.self="showFetchDialog = false">
+          <div class="modal" style="max-height:70vh;overflow-y:auto;">
+            <h3>选择要导入的模型</h3>
+            <p style="color:var(--text-secondary);margin-bottom:12px;">
+              共 {{ fetchedModels.length }} 个模型，请勾选要导入的条目
+            </p>
+            <label class="fetch-model-row" style="cursor:pointer;margin-bottom:4px;">
+              <input type="checkbox" v-model="fetchSelectAll" @change="handleFetchSelectAll" class="fetch-model-checkbox" />
+              <strong>全选</strong>
+            </label>
+            <div v-for="m in fetchedModels" :key="m.id" class="fetch-model-row">
+              <input type="checkbox" :value="m.id" v-model="fetchSelectedIds" class="fetch-model-checkbox" />
+              <span class="fetch-model-id"><strong>{{ m.id }}</strong></span>
+              <span v-if="m.name && m.name !== m.id" class="fetch-model-name">({{ m.name }})</span>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:6px;justify-content:flex-end;">
+              <button class="btn-secondary" @click="showFetchDialog = false">取消</button>
+              <button class="btn-primary" @click="handleImportModels" :disabled="fetchSelectedIds.length === 0">导入 ({{ fetchSelectedIds.length }})</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Delete model confirmation (AC-19, AC-30) -->
         <div v-if="confirmDeleteModel" class="modal-overlay" @click.self="confirmDeleteModel = ''">
           <div class="modal">
@@ -326,6 +356,14 @@ const confirmRemoveProvider = ref(false)
 const modelForm = reactive(defaultModel())
 const modelFormErrors = reactive({ id: '', server: '' })
 
+// Fetch models state
+const fetchingModels = ref(false)
+const fetchedModels = ref<Model[]>([])
+const showFetchDialog = ref(false)
+const fetchError = ref('')
+const fetchSelectAll = ref(false)
+const fetchSelectedIds = ref<string[]>([])
+
 // Computed
 const builtInProviders = computed(() => scheme.value?.providers.filter(p => p.builtIn) || [])
 const customProviders = computed(() => scheme.value?.providers.filter(p => !p.builtIn) || [])
@@ -342,6 +380,38 @@ const availableBuiltIns = computed(() => {
 function getBuiltInAPIType(key: string): string {
   return allBuiltIns.value.find(b => b.key === key)?.apiType || ''
 }
+
+// Effective APIType for a provider (built-in: lookup from catalog; custom: use own field)
+function getEffectiveAPIType(prov: Provider | null): string {
+  if (!prov) return ''
+  if (prov.builtIn) {
+    return getBuiltInAPIType(prov.key)
+  }
+  return prov.apiType
+}
+
+// Fetch models computed
+const canFetchModels = computed(() => {
+  const prov = selectedProvider.value
+  if (!prov) return false
+  const apiType = getEffectiveAPIType(prov)
+  // AC-12, AC-13: only openai-completions and openai-responses are supported
+  if (apiType !== 'openai-completions' && apiType !== 'openai-responses') return false
+  // AC-14: baseUrl required
+  if (!prov.baseUrl) return false
+  return true
+})
+
+const fetchButtonTitle = computed(() => {
+  const prov = selectedProvider.value
+  if (!prov) return '请先选择供应商'
+  const apiType = getEffectiveAPIType(prov)
+  if (apiType !== 'openai-completions' && apiType !== 'openai-responses') {
+    return '该 API 类型不支持自动拉取'
+  }
+  if (!prov.baseUrl) return '请先配置 baseUrl'
+  return ''
+})
 
 onMounted(async () => {
   await loadData()
@@ -527,6 +597,62 @@ async function handleDeleteModel() {
     confirmDeleteModel.value = ''
     await loadData()
     showToast?.('模型已删除', 'success')
+  } catch (e: any) {
+    showToast?.(e?.message || e, 'error')
+  }
+}
+
+// ---- Fetch models ----
+async function handleFetchModels() {
+  const prov = selectedProvider.value
+  if (!prov) return
+
+  fetchingModels.value = true
+  fetchError.value = ''
+  try {
+    const a = api()
+    const result = await a.FetchProviderModels(props.id, prov.key)
+    fetchedModels.value = result
+    fetchSelectedIds.value = []
+    fetchSelectAll.value = false
+    showFetchDialog.value = true
+  } catch (e: any) {
+    fetchError.value = e?.message || e
+    showToast?.(fetchError.value, 'error') // AC-07, AC-08, AC-09
+  } finally {
+    fetchingModels.value = false
+  }
+}
+
+function handleFetchSelectAll() {
+  if (fetchSelectAll.value) {
+    fetchSelectedIds.value = fetchedModels.value.map(m => m.id)
+  } else {
+    fetchSelectedIds.value = []
+  }
+}
+
+async function handleImportModels() {
+  if (fetchSelectedIds.value.length === 0) {
+    showToast?.('请至少选择一个模型', 'error') // AC-16
+    return
+  }
+  try {
+    const selectedModels = fetchedModels.value.filter(m => fetchSelectedIds.value.includes(m.id))
+    const a = api()
+    const count = await a.ImportProviderModels(props.id, selectedProviderKey.value, selectedModels)
+    showFetchDialog.value = false
+    fetchedModels.value = []
+    fetchSelectedIds.value = []
+    fetchSelectAll.value = false
+    await loadData() // AC-05: refresh UI
+    if (count > 0) {
+      const skipped = selectedModels.length - count
+      const msg = skipped > 0 ? `已导入 ${count} 个模型，${skipped} 个因重复跳过` : `已导入 ${count} 个模型`
+      showToast?.(msg, 'success')
+    } else {
+      showToast?.('无新增模型（所有选中模型均已存在）', 'success') // AC-11
+    }
   } catch (e: any) {
     showToast?.(e?.message || e, 'error')
   }

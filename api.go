@@ -362,6 +362,53 @@ func (a *App) RemoveModel(schemeID, providerKey, modelID string) error {
 	return SaveSchemes(schemes)
 }
 
+// ImportProviderModels bulk-imports models into a provider, skipping duplicates by ID.
+// Returns the number of models actually added (0 if all were skipped).
+func (a *App) ImportProviderModels(schemeID, providerKey string, models []Model) (int, error) {
+	schemes, err := LoadSchemes()
+	if err != nil {
+		return 0, err
+	}
+	idx := findSchemeIndex(schemes, schemeID)
+	if idx < 0 {
+		return 0, fmt.Errorf("scheme not found: %s", schemeID)
+	}
+
+	scheme := &schemes[idx]
+	pidx := findProviderIndex(scheme, providerKey)
+	if pidx < 0 {
+		return 0, fmt.Errorf("provider not found: %s", providerKey)
+	}
+
+	prov := &scheme.Providers[pidx]
+
+	// Build existing ID set for O(1) duplicate check (AC-10)
+	existing := make(map[string]bool, len(prov.Models))
+	for _, m := range prov.Models {
+		existing[m.ID] = true
+	}
+
+	added := 0
+	for _, m := range models {
+		if existing[m.ID] {
+			continue
+		}
+		prov.Models = append(prov.Models, m)
+		existing[m.ID] = true
+		added++
+	}
+
+	// AC-11: no error when all skipped — just return 0
+	if added == 0 {
+		return 0, nil
+	}
+
+	if err := SaveSchemes(schemes); err != nil {
+		return 0, err
+	}
+	return added, nil
+}
+
 // =============================================================================
 // Export / Import
 // =============================================================================
