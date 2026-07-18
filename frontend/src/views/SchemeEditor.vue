@@ -1,0 +1,534 @@
+<template>
+  <div class="two-column">
+    <!-- Left sidebar: Provider list -->
+    <div class="sidebar card" style="margin:12px;">
+      <h3 style="margin-bottom:12px;">供应商</h3>
+      
+      <!-- Built-in providers -->
+      <div class="section-title">内置供应商</div>
+      <div v-for="prov in builtInProviders" :key="prov.key"
+        :class="['provider-item', { active: selectedProviderKey === prov.key }]"
+        @click="selectedProviderKey = prov.key">
+        <span class="provider-name">{{ prov.name || prov.key }}</span>
+        <span class="tag tag-builtin">内置</span>
+      </div>
+
+      <!-- Custom providers -->
+      <div class="section-title">自定义供应商</div>
+      <div v-for="prov in customProviders" :key="prov.key"
+        :class="['provider-item', { active: selectedProviderKey === prov.key }]"
+        @click="selectedProviderKey = prov.key">
+        <span class="provider-name">{{ prov.name || prov.key }}</span>
+        <span class="tag tag-custom">自定义</span>
+      </div>
+
+      <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;">
+        <button class="btn-primary btn-small" @click="showAddBuiltIn = !showAddBuiltIn">+ 添加内置供应商</button>
+        <button class="btn-secondary btn-small" @click="showAddCustom = !showAddCustom">+ 添加自定义供应商</button>
+      </div>
+
+      <!-- Add built-in dropdown -->
+      <div v-if="showAddBuiltIn" class="card" style="margin-top:8px;padding:12px;">
+        <select v-model="addBuiltInKey" style="margin-bottom:8px;">
+          <option value="">-- 选择内置供应商 --</option>
+          <option v-for="b in availableBuiltIns" :key="b.key" :value="b.key">{{ b.name }}</option>
+        </select>
+        <div v-if="addBuiltInKey" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
+          API 类型：{{ getBuiltInAPIType(addBuiltInKey) }}
+        </div>
+        <div class="form-group" v-if="addBuiltInKey">
+          <label>API Key</label>
+          <div class="password-wrapper">
+            <input :type="showBuiltInKey ? 'text' : 'password'" v-model="addBuiltInAPIKey" placeholder="输入 API key" />
+            <button class="toggle-password" @click="showBuiltInKey = !showBuiltInKey">
+              {{ showBuiltInKey ? '隐藏' : '显示' }}
+            </button>
+          </div>
+        </div>
+        <div class="form-group" v-if="addBuiltInKey">
+          <label>Base URL（可选，用于覆盖/代理）</label>
+          <input v-model="addBuiltInBaseURL" placeholder="https://your-proxy.example.com/v1" />
+        </div>
+        <div v-if="addBuiltInError" class="field-error">{{ addBuiltInError }}</div>
+        <div style="display:flex;gap:6px;" v-if="addBuiltInKey">
+          <button class="btn-primary btn-small" @click="handleAddBuiltIn">添加</button>
+          <button class="btn-secondary btn-small" @click="showAddBuiltIn = false; resetAddBuiltIn()">取消</button>
+        </div>
+      </div>
+
+      <!-- Add custom form -->
+      <div v-if="showAddCustom" class="card" style="margin-top:8px;padding:12px;">
+        <div class="form-group">
+          <label>供应商标识 *</label>
+          <input v-model="addCustomKey" placeholder="如 my-proxy" />
+        </div>
+        <div class="form-group">
+          <label>Base URL *</label>
+          <input v-model="addCustomBaseURL" placeholder="https://my-proxy.example.com/v1" />
+        </div>
+        <div class="form-group">
+          <label>API 类型 *</label>
+          <select v-model="addCustomAPIType">
+            <option value="">-- 选择 API 类型 --</option>
+            <option v-for="t in apiTypes" :key="t" :value="t">{{ t }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>API Key（可选）</label>
+          <div class="password-wrapper">
+            <input :type="showCustomKey ? 'text' : 'password'" v-model="addCustomAPIKey" placeholder="输入 API key" />
+            <button class="toggle-password" @click="showCustomKey = !showCustomKey">
+              {{ showCustomKey ? '隐藏' : '显示' }}
+            </button>
+          </div>
+        </div>
+        <div v-if="addCustomError" class="field-error">{{ addCustomError }}</div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn-primary btn-small" @click="handleAddCustom">添加</button>
+          <button class="btn-secondary btn-small" @click="showAddCustom = false; resetAddCustom()">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right main area: Provider detail + Model list -->
+    <div class="main-area" style="margin:12px;">
+      <div v-if="!selectedProvider" class="card empty-state" style="height:100%;">
+        <h2>{{ scheme?.name || '方案' }}</h2>
+        <p>从左侧选择一个供应商以查看和编辑其配置</p>
+      </div>
+
+      <div v-else>
+        <!-- Provider config form -->
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <h3>
+              {{ selectedProvider.name || selectedProvider.key }}
+              <span :class="['tag', selectedProvider.builtIn ? 'tag-builtin' : 'tag-custom']">
+                {{ selectedProvider.builtIn ? '内置' : '自定义' }}
+              </span>
+            </h3>
+            <button class="btn-danger btn-small" @click="confirmRemoveProvider = true">移除供应商</button>
+          </div>
+
+          <!-- Built-in provider form (AC-09, AC-10, AC-12-1) -->
+          <template v-if="selectedProvider.builtIn">
+            <div class="form-group">
+              <label>API Key</label>
+              <div class="password-wrapper">
+                <input :type="showProvKey ? 'text' : 'password'" v-model="provAPIKey" placeholder="输入 API key" />
+                <button class="toggle-password" @click="showProvKey = !showProvKey">
+                  {{ showProvKey ? '隐藏' : '显示' }}
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Base URL（可选，用于覆盖/代理）</label>
+              <input v-model="provBaseURL" placeholder="https://your-proxy.example.com/v1" />
+            </div>
+          </template>
+
+          <!-- Custom provider form (AC-13) -->
+          <template v-else>
+            <div class="form-group">
+              <label>供应商标识</label>
+              <input :value="selectedProvider.key" disabled />
+            </div>
+            <div class="form-group">
+              <label>Base URL *</label>
+              <input v-model="provBaseURL" placeholder="https://my-proxy.example.com/v1" />
+            </div>
+            <div class="form-group">
+              <label>API 类型 *</label>
+              <select v-model="provAPIType">
+                <option value="">-- 选择 API 类型 --</option>
+                <option v-for="t in apiTypes" :key="t" :value="t">{{ t }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>API Key（可选）</label>
+              <div class="password-wrapper">
+                <input :type="showProvKey ? 'text' : 'password'" v-model="provAPIKey" placeholder="输入 API key" />
+                <button class="toggle-password" @click="showProvKey = !showProvKey">
+                  {{ showProvKey ? '隐藏' : '显示' }}
+                </button>
+              </div>
+            </div>
+          </template>
+
+          <div v-if="provError" class="field-error" style="margin-bottom:8px;">{{ provError }}</div>
+          <button class="btn-primary" @click="handleSaveProvider">保存供应商配置</button>
+        </div>
+
+        <!-- Model list (AC-16) -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <h3>模型列表</h3>
+            <button class="btn-primary btn-small" @click="showAddModel = true">+ 添加模型</button>
+          </div>
+
+          <div v-if="selectedProvider.models.length === 0" style="color:var(--text-secondary);padding:12px 0;">
+            暂无自定义模型
+          </div>
+
+          <div v-for="(model, idx) in selectedProvider.models" :key="model.id" class="list-item" style="margin-bottom:4px;">
+            <div style="flex:1;">
+              <strong>{{ model.id }}</strong>
+              <span v-if="model.name && model.name !== model.id" style="color:var(--text-secondary);margin-left:8px;">{{ model.name }}</span>
+              <span style="font-size:12px;color:var(--text-secondary);margin-left:8px;">
+                context: {{ model.contextWindow }} | maxTokens: {{ model.maxTokens }}
+              </span>
+            </div>
+            <div class="list-item-actions">
+              <button class="btn-secondary btn-small" @click="startEditModel(model)">编辑</button>
+              <button class="btn-danger btn-small" @click="confirmDeleteModel = model.id">删除</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add/Edit Model modal (AC-17, AC-18) -->
+        <div v-if="showAddModel || editingModel" class="modal-overlay" @click.self="closeModelForm">
+          <div class="modal" style="max-height:80vh;overflow-y:auto;">
+            <h3>{{ editingModel ? '编辑模型' : '添加模型' }}</h3>
+            <div class="form-group">
+              <label>ID *</label>
+              <input v-model="modelForm.id" placeholder="模型标识符" :disabled="!!editingModel" />
+              <div v-if="modelFormErrors.id" class="field-error">{{ modelFormErrors.id }}</div>
+            </div>
+            <div class="form-group">
+              <label>名称（默认同 ID）</label>
+              <input v-model="modelForm.name" placeholder="显示名称" />
+            </div>
+            <div class="form-group">
+              <label>推理模式</label>
+              <div class="checkbox-group">
+                <label><input type="checkbox" v-model="modelForm.reasoning" /> reasoning</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>输入类型</label>
+              <div class="checkbox-group">
+                <label><input type="checkbox" v-model="modelForm.inputText" /> 文本</label>
+                <label><input type="checkbox" v-model="modelForm.inputImage" /> 图片</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Context Window</label>
+              <input type="number" v-model.number="modelForm.contextWindow" />
+            </div>
+            <div class="form-group">
+              <label>Max Tokens</label>
+              <input type="number" v-model.number="modelForm.maxTokens" />
+            </div>
+            <fieldset style="border:1px solid var(--border-color);border-radius:var(--radius);padding:12px;margin-bottom:16px;">
+              <legend style="font-size:13px;color:var(--text-secondary);">成本 (Cost)</legend>
+              <div class="cost-grid">
+                <div class="form-group">
+                  <label>Input</label>
+                  <input type="number" step="0.0001" v-model.number="modelForm.costInput" />
+                </div>
+                <div class="form-group">
+                  <label>Output</label>
+                  <input type="number" step="0.0001" v-model.number="modelForm.costOutput" />
+                </div>
+                <div class="form-group">
+                  <label>Cache Read</label>
+                  <input type="number" step="0.0001" v-model.number="modelForm.costCacheRead" />
+                </div>
+                <div class="form-group">
+                  <label>Cache Write</label>
+                  <input type="number" step="0.0001" v-model.number="modelForm.costCacheWrite" />
+                </div>
+              </div>
+            </fieldset>
+            <div v-if="modelFormErrors.server" class="field-error" style="margin-bottom:8px;">{{ modelFormErrors.server }}</div>
+            <div class="modal-actions">
+              <button class="btn-secondary" @click="closeModelForm">取消</button>
+              <button class="btn-primary" @click="handleSaveModel">
+                {{ editingModel ? '保存' : '添加' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delete model confirmation (AC-19, AC-30) -->
+        <div v-if="confirmDeleteModel" class="modal-overlay" @click.self="confirmDeleteModel = ''">
+          <div class="modal">
+            <h3>确认删除模型</h3>
+            <p>确定要删除模型「{{ confirmDeleteModel }}」吗？</p>
+            <div class="modal-actions">
+              <button class="btn-secondary" @click="confirmDeleteModel = ''">取消</button>
+              <button class="btn-danger" @click="handleDeleteModel">确认删除</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Remove provider confirmation -->
+        <div v-if="confirmRemoveProvider" class="modal-overlay" @click.self="confirmRemoveProvider = false">
+          <div class="modal">
+            <h3>确认移除供应商</h3>
+            <p>确定要移除供应商「{{ selectedProvider?.name || selectedProvider?.key }}」及其所有模型吗？</p>
+            <div class="modal-actions">
+              <button class="btn-secondary" @click="confirmRemoveProvider = false">取消</button>
+              <button class="btn-danger" @click="handleRemoveProvider">确认移除</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref, watch, inject } from 'vue'
+import { useRoute } from 'vue-router'
+import api from '../wails/api'
+import type { Scheme, Provider, Model, BuiltInProvider } from '../types'
+import { defaultModel } from '../types'
+
+const props = defineProps<{ id: string }>()
+const showToast: any = inject('showToast')
+const route = useRoute()
+
+const scheme = ref<Scheme | null>(null)
+const selectedProviderKey = ref('')
+const apiTypes = ref<string[]>([])
+const allBuiltIns = ref<BuiltInProvider[]>([])
+
+// Add built-in state
+const showAddBuiltIn = ref(false)
+const addBuiltInKey = ref('')
+const addBuiltInAPIKey = ref('')
+const addBuiltInBaseURL = ref('')
+const addBuiltInError = ref('')
+const showBuiltInKey = ref(false)
+
+// Add custom state
+const showAddCustom = ref(false)
+const addCustomKey = ref('')
+const addCustomBaseURL = ref('')
+const addCustomAPIType = ref('')
+const addCustomAPIKey = ref('')
+const addCustomError = ref('')
+const showCustomKey = ref(false)
+
+// Provider form state
+const provAPIKey = ref('')
+const provBaseURL = ref('')
+const provAPIType = ref('')
+const provError = ref('')
+const showProvKey = ref(false)
+
+// Model form
+const showAddModel = ref(false)
+const editingModel = ref<Model | null>(null)
+const confirmDeleteModel = ref('')
+const confirmRemoveProvider = ref(false)
+const modelForm = reactive(defaultModel())
+const modelFormErrors = reactive({ id: '', server: '' })
+
+// Computed
+const builtInProviders = computed(() => scheme.value?.providers.filter(p => p.builtIn) || [])
+const customProviders = computed(() => scheme.value?.providers.filter(p => !p.builtIn) || [])
+const selectedProvider = computed(() => {
+  if (!scheme.value || !selectedProviderKey.value) return null
+  return scheme.value.providers.find(p => p.key === selectedProviderKey.value) || null
+})
+
+const availableBuiltIns = computed(() => {
+  const existing = new Set((scheme.value?.providers || []).map(p => p.key))
+  return allBuiltIns.value.filter(b => !existing.has(b.key))
+})
+
+function getBuiltInAPIType(key: string): string {
+  return allBuiltIns.value.find(b => b.key === key)?.apiType || ''
+}
+
+onMounted(async () => {
+  await loadData()
+})
+
+watch(() => route.params.id, async (newId) => {
+  if (newId) await loadData()
+})
+
+async function loadData() {
+  try {
+    const a = api()
+    const schemes = await a.ListSchemes()
+    scheme.value = schemes.find(s => s.id === props.id) || null
+    apiTypes.value = await a.ListAPITypes()
+    allBuiltIns.value = await a.ListBuiltInProviders()
+    // Auto-select first provider if none selected
+    if (scheme.value && scheme.value.providers.length > 0 && !selectedProviderKey.value) {
+      selectedProviderKey.value = scheme.value.providers[0].key
+    }
+  } catch (e: any) {
+    showToast?.(e?.message || e, 'error')
+  }
+}
+
+// Sync selected provider to form
+watch(selectedProvider, (prov) => {
+  if (prov) {
+    provAPIKey.value = prov.apiKey
+    provBaseURL.value = prov.baseUrl
+    provAPIType.value = prov.apiType
+    provError.value = ''
+  }
+})
+
+// ---- Built-in add ----
+function resetAddBuiltIn() {
+  addBuiltInKey.value = ''
+  addBuiltInAPIKey.value = ''
+  addBuiltInBaseURL.value = ''
+  addBuiltInError.value = ''
+  showBuiltInKey.value = false
+}
+
+async function handleAddBuiltIn() {
+  if (!addBuiltInKey.value) return
+  try {
+    const a = api()
+    await a.AddBuiltInProvider(props.id, addBuiltInKey.value, addBuiltInAPIKey.value, addBuiltInBaseURL.value)
+    showAddBuiltIn.value = false
+    resetAddBuiltIn()
+    await loadData()
+    selectedProviderKey.value = addBuiltInKey.value
+    showToast?.('内置供应商已添加', 'success')
+  } catch (e: any) {
+    addBuiltInError.value = e?.message || e
+  }
+}
+
+// ---- Custom add ----
+function resetAddCustom() {
+  addCustomKey.value = ''
+  addCustomBaseURL.value = ''
+  addCustomAPIType.value = ''
+  addCustomAPIKey.value = ''
+  addCustomError.value = ''
+  showCustomKey.value = false
+}
+
+async function handleAddCustom() {
+  try {
+    const a = api()
+    await a.AddCustomProvider(props.id, addCustomKey.value, addCustomBaseURL.value, addCustomAPIType.value, addCustomAPIKey.value)
+    showAddCustom.value = false
+    resetAddCustom()
+    await loadData()
+    selectedProviderKey.value = addCustomKey.value
+    showToast?.('自定义供应商已添加', 'success')
+  } catch (e: any) {
+    addCustomError.value = e?.message || e
+  }
+}
+
+// ---- Provider save ----
+async function handleSaveProvider() {
+  if (!selectedProvider.value) return
+  try {
+    const a = api()
+    const updated: Provider = {
+      ...selectedProvider.value,
+      apiKey: provAPIKey.value,
+      baseUrl: provBaseURL.value,
+      apiType: provAPIType.value,
+    }
+    await a.UpdateProvider(props.id, updated)
+    provError.value = ''
+    await loadData()
+    showToast?.('供应商配置已保存', 'success')
+  } catch (e: any) {
+    provError.value = e?.message || e
+  }
+}
+
+async function handleRemoveProvider() {
+  if (!selectedProvider.value) return
+  try {
+    const a = api()
+    await a.RemoveProvider(props.id, selectedProvider.value.key)
+    confirmRemoveProvider.value = false
+    selectedProviderKey.value = ''
+    await loadData()
+    showToast?.('供应商已移除', 'success')
+  } catch (e: any) {
+    showToast?.(e?.message || e, 'error')
+  }
+}
+
+// ---- Model ----
+function startEditModel(m: Model) {
+  editingModel.value = m
+  Object.assign(modelForm, { ...m })
+  modelFormErrors.id = ''
+  modelFormErrors.server = ''
+}
+
+function closeModelForm() {
+  showAddModel.value = false
+  editingModel.value = null
+  Object.assign(modelForm, defaultModel())
+  modelFormErrors.id = ''
+  modelFormErrors.server = ''
+}
+
+async function handleSaveModel() {
+  // Client-side validation
+  if (!modelForm.id.trim()) {
+    modelFormErrors.id = '模型 ID 不能为空'
+    return
+  }
+  // Check duplicate (for add mode)
+  if (!editingModel.value && selectedProvider.value) {
+    const exists = selectedProvider.value.models.some(m => m.id === modelForm.id.trim())
+    if (exists) {
+      modelFormErrors.id = '模型 ID 在该供应商下已存在'
+      return
+    }
+  }
+
+  try {
+    const a = api()
+    const m: Model = {
+      id: modelForm.id.trim(),
+      name: modelForm.name.trim() || modelForm.id.trim(),
+      reasoning: modelForm.reasoning,
+      inputText: modelForm.inputText,
+      inputImage: modelForm.inputImage,
+      contextWindow: modelForm.contextWindow,
+      maxTokens: modelForm.maxTokens,
+      costInput: modelForm.costInput,
+      costOutput: modelForm.costOutput,
+      costCacheRead: modelForm.costCacheRead,
+      costCacheWrite: modelForm.costCacheWrite,
+    }
+    if (editingModel.value) {
+      await a.UpdateModel(props.id, selectedProviderKey.value, m)
+    } else {
+      await a.AddModel(props.id, selectedProviderKey.value, m)
+    }
+    closeModelForm()
+    await loadData()
+    showToast?.(editingModel.value ? '模型已更新' : '模型已添加', 'success')
+  } catch (e: any) {
+    modelFormErrors.server = e?.message || e
+  }
+}
+
+async function handleDeleteModel() {
+  const id = confirmDeleteModel.value
+  if (!id || !selectedProvider.value) return
+  try {
+    const a = api()
+    await a.RemoveModel(props.id, selectedProvider.value.key, id)
+    confirmDeleteModel.value = ''
+    await loadData()
+    showToast?.('模型已删除', 'success')
+  } catch (e: any) {
+    showToast?.(e?.message || e, 'error')
+  }
+}
+</script>
