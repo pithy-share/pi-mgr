@@ -23,6 +23,10 @@ export interface AppAPI {
   UpdateModel(schemeID: string, providerKey: string, model: Model): Promise<void>
   RemoveModel(schemeID: string, providerKey: string, modelID: string): Promise<void>
 
+  // Export / Import
+  ExportSchemes(): Promise<void>
+  ImportSchemes(): Promise<void>
+
   // Catalog
   ListBuiltInProviders(): Promise<BuiltInProvider[]>
   ListAPITypes(): Promise<string[]>
@@ -47,6 +51,8 @@ function api(): AppAPI {
     AddModel: () => Promise.resolve(),
     UpdateModel: () => Promise.resolve(),
     RemoveModel: () => Promise.resolve(),
+    ExportSchemes: () => Promise.resolve(),
+    ImportSchemes: () => Promise.resolve(),
     ListBuiltInProviders: () => Promise.resolve([]),
     ListAPITypes: () => Promise.resolve([]),
   }

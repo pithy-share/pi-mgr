@@ -19,6 +19,16 @@ var BuiltInProviders = []BuiltInProvider{
 	{Key: "huggingface", Name: "Hugging Face", APIType: "openai-completions"},
 }
 
+// IsBuiltInProvider checks if a key is in the built-in provider catalog
+func IsBuiltInProvider(key string) bool {
+	for _, bp := range BuiltInProviders {
+		if bp.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
 // ValidAPITypes is the list of API types available for custom providers
 var ValidAPITypes = []string{
 	"openai-completions",

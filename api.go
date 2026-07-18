@@ -1,8 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // =============================================================================
@@ -356,6 +360,188 @@ func (a *App) RemoveModel(schemeID, providerKey, modelID string) error {
 
 	prov.Models = append(prov.Models[:midx], prov.Models[midx+1:]...)
 	return SaveSchemes(schemes)
+}
+
+// =============================================================================
+// Export / Import
+// =============================================================================
+
+// ExportSchemes exports all schemes to a user-chosen file (AC-01)
+func (a *App) ExportSchemes() error {
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: "pi-mgr-schemes.json",
+		Title:           "导出配置方案",
+		Filters: []runtime.FileFilter{{
+			DisplayName: "JSON 文件 (*.json)",
+			Pattern:     "*.json",
+		}},
+	})
+	if err != nil {
+		return fmt.Errorf("打开保存对话框失败: %w", err)
+	}
+	if path == "" {
+		// User cancelled
+		return nil
+	}
+
+	schemes, err := LoadSchemes()
+	if err != nil {
+		return fmt.Errorf("读取方案失败: %w", err)
+	}
+
+	data, err := json.MarshalIndent(schemes, "", "  ")
+	if err != nil {
+		return fmt.Errorf("序列化方案失败: %w", err)
+	}
+
+	// Atomic write: temp + rename, fallback to direct write (same pattern as SaveSchemes)
+	tmpPath := path + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
+		return fmt.Errorf("写入导出文件失败: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		// Rename may fail across volumes; fallback to direct write
+		if err2 := os.WriteFile(path, data, 0644); err2 != nil {
+			os.Remove(tmpPath)
+			return fmt.Errorf("保存导出文件失败: %w", err2)
+		}
+		os.Remove(tmpPath)
+	}
+
+	return nil
+}
+
+// ImportSchemes imports schemes from a user-chosen JSON file (AC-04, AC-05, AC-06, AC-07, AC-09, AC-10)
+func (a *App) ImportSchemes() error {
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "导入配置方案",
+		Filters: []runtime.FileFilter{{
+			DisplayName: "JSON 文件 (*.json)",
+			Pattern:     "*.json",
+		}},
+	})
+	if err != nil {
+		return fmt.Errorf("打开文件对话框失败: %w", err)
+	}
+	if path == "" {
+		// User cancelled
+		return nil
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("读取文件失败: %w", err)
+	}
+
+	// Trim whitespace for empty/whitespace-only detection
+	trimmed := strings.TrimSpace(string(data))
+	if trimmed == "" || trimmed == "[]" {
+		// Empty array → no-op (AC-09)
+		return nil
+	}
+
+	// Parse as raw message to determine top-level type (AC-04: object or array)
+	var raw json.RawMessage
+	if err := json.Unmarshal([]byte(trimmed), &raw); err != nil {
+		return fmt.Errorf("JSON 格式错误: %w", err)
+	}
+
+	var imported []Scheme
+	if len(raw) > 0 && raw[0] == '{' {
+		// Single Scheme object → wrap in array
+		var single Scheme
+		if err := json.Unmarshal(raw, &single); err != nil {
+			return fmt.Errorf("JSON 格式错误: %w", err)
+		}
+		imported = []Scheme{single}
+	} else if len(raw) > 0 && raw[0] == '[' {
+		// Array of schemes
+		if err := json.Unmarshal(raw, &imported); err != nil {
+			return fmt.Errorf("JSON 格式错误: %w", err)
+		}
+	} else {
+		// Not an object or array (AC-10: non-object)
+		return fmt.Errorf("JSON 格式错误: 文件根层级应为对象或数组")
+	}
+
+	// Check each scheme has an ID (AC-10)
+	for i := range imported {
+		if strings.TrimSpace(imported[i].ID) == "" {
+			return fmt.Errorf("导入的方案缺少 id 字段")
+		}
+	}
+
+	// Downgrade unknown builtIn providers (AC-06)
+	for si := range imported {
+		for pi := range imported[si].Providers {
+			prov := &imported[si].Providers[pi]
+			if prov.BuiltIn && !IsBuiltInProvider(prov.Key) {
+				prov.BuiltIn = false
+			}
+		}
+	}
+
+	// Merge with existing schemes (AC-05)
+	existing, err := LoadSchemes()
+	if err != nil {
+		return fmt.Errorf("读取现有方案失败: %w", err)
+	}
+
+	merged := make([]Scheme, 0, len(existing)+len(imported))
+	covered := make(map[string]bool, len(imported))
+	for _, imp := range imported {
+		covered[imp.ID] = true
+	}
+
+	// Add existing schemes not being overwritten
+	for _, ex := range existing {
+		if !covered[ex.ID] {
+			merged = append(merged, ex)
+		}
+	}
+	// Add all imported schemes (new or overwrite)
+	merged = append(merged, imported...)
+
+	// Full validation before save (AC-07)
+	for si := range merged {
+		scheme := &merged[si]
+		if errs := ValidateScheme(scheme); len(errs) > 0 {
+			return fmt.Errorf("方案 \"%s\" 校验失败: %s", scheme.Name, errs[0])
+		}
+		for pi := range scheme.Providers {
+			prov := &scheme.Providers[pi]
+			// Build list of other providers in this scheme (excluding self) for uniqueness check
+			others := make([]Provider, 0, len(scheme.Providers)-1)
+			for qi, other := range scheme.Providers {
+				if qi != pi {
+					others = append(others, other)
+				}
+			}
+			if errs := ValidateProvider(prov, others); len(errs) > 0 {
+				return fmt.Errorf("方案 \"%s\" 供应商 \"%s\" 校验失败: %s", scheme.Name, prov.Key, errs[0])
+			}
+			for mi := range prov.Models {
+				model := &prov.Models[mi]
+				// Build list of other models in this provider (excluding self) for uniqueness check
+				omodels := make([]Model, 0, len(prov.Models)-1)
+				for ni, other := range prov.Models {
+					if ni != mi {
+						omodels = append(omodels, other)
+					}
+				}
+				if errs := ValidateModel(model, omodels); len(errs) > 0 {
+					return fmt.Errorf("方案 \"%s\" 供应商 \"%s\" 模型 \"%s\" 校验失败: %s", scheme.Name, prov.Key, model.ID, errs[0])
+				}
+			}
+		}
+	}
+
+	// Save (AC-07: only called after all validation passes)
+	if err := SaveSchemes(merged); err != nil {
+		return fmt.Errorf("保存方案失败: %w", err)
+	}
+
+	return nil
 }
 
 // =============================================================================

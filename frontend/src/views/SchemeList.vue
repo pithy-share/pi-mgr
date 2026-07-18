@@ -2,7 +2,11 @@
   <div style="max-width:800px;margin:0 auto;padding:20px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
       <h2>配置方案</h2>
-      <button class="btn-primary" @click="showCreate = true">+ 新建方案</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-secondary" @click="handleExport">导出全部</button>
+        <button class="btn-secondary" @click="handleImport">导入</button>
+        <button class="btn-primary" @click="showCreate = true">+ 新建方案</button>
+      </div>
     </div>
 
     <!-- Create inline form -->
@@ -148,6 +152,27 @@ async function handleDuplicate(id: string) {
     await a.DuplicateScheme(id)
     await loadSchemes()
     showToast?.('方案已复制', 'success')
+  } catch (e: any) {
+    showToast?.(e?.message || e, 'error')
+  }
+}
+
+async function handleExport() {
+  try {
+    const a = api()
+    await a.ExportSchemes()
+    showToast?.('方案已导出', 'success')
+  } catch (e: any) {
+    showToast?.(e?.message || e, 'error')
+  }
+}
+
+async function handleImport() {
+  try {
+    const a = api()
+    await a.ImportSchemes()
+    await loadSchemes()  // AC-08: refresh list immediately after import
+    showToast?.('方案已导入', 'success')
   } catch (e: any) {
     showToast?.(e?.message || e, 'error')
   }
