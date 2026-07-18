@@ -265,7 +265,24 @@ func (a *App) SyncPiConfig(address string) SyncResult {
 		}
 	}
 
-	// ---- Item 3: prompts/ (scp -r + ssh atomic replace) ----
+	// ---- Item 3: keybindings.json (scp) ----
+	keybindingsSrc := filepath.Join(piDir, "agent", "keybindings.json")
+	if _, err := os.Stat(keybindingsSrc); os.IsNotExist(err) {
+		addResult("keybindings.json", "skipped", "本地文件不存在，已跳过")
+	} else {
+		out, err := scpCopy(user, host, port, keybindingsSrc, "~/.pi/agent/keybindings.json", 30*time.Second)
+		if err != nil {
+			msg := out
+			if msg == "" {
+				msg = err.Error()
+			}
+			addResult("keybindings.json", "failed", msg)
+		} else {
+			addResult("keybindings.json", "success", "已同步")
+		}
+	}
+
+	// ---- Item 4: prompts/ (scp -r + ssh atomic replace) ----
 	// Pi stores prompts at ~/.pi/agent/prompts/ (not ~/.pi/prompts/)
 	promptsSrc := filepath.Join(piDir, "agent", "prompts")
 	if _, err := os.Stat(promptsSrc); os.IsNotExist(err) {
@@ -275,7 +292,7 @@ func (a *App) SyncPiConfig(address string) SyncResult {
 		addResult("prompts", status, msg)
 	}
 
-	// ---- Item 4: skills/ (scp -r + ssh atomic replace) ----
+	// ---- Item 5: skills/ (scp -r + ssh atomic replace) ----
 	skillsSrc := filepath.Join(piDir, "agent", "skills")
 	if _, err := os.Stat(skillsSrc); os.IsNotExist(err) {
 		addResult("skills", "skipped", "本地目录不存在，已跳过")

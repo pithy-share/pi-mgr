@@ -145,7 +145,7 @@
 
 1. 解析地址 → 预检查 SSH 连通性 → 创建远程 `~/.pi/agent/` 目录
 2. 逐项同步（每项独立，失败不影响其他项）：
-   - `settings.json` / `models.json`：`scp` 直接传输
+   - `settings.json` / `models.json` / `keybindings.json`：`scp` 直接传输
    - `prompts/` / `skills/`：`scp -r` 到临时目录 → `ssh rm -rf + mv` 原子替换（模拟 rsync --delete）
 3. 整体状态：全部成功 → `"success"`，部分失败 → `"partial"`，全部失败 → `"failed"`
 
