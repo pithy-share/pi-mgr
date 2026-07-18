@@ -79,6 +79,62 @@ func GetScheme(id string) (*Scheme, error) {
 	return nil, fmt.Errorf("scheme not found: %s", id)
 }
 
+// ---------------------------------------------------------------------------
+// Active scheme tracking
+// ---------------------------------------------------------------------------
+
+// activeStorePath returns the path to active.json in %APPDATA%/pi-mgr/
+func activeStorePath() string {
+	return filepath.Join(filepath.Dir(storePath()), "active.json")
+}
+
+// GetActiveSchemeID reads the currently active scheme ID from active.json.
+// Returns empty string if no scheme has been activated yet.
+func GetActiveSchemeID() (string, error) {
+	data, err := os.ReadFile(activeStorePath())
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	var active struct {
+		ActiveSchemeID string `json:"activeSchemeId"`
+	}
+	if err := json.Unmarshal(data, &active); err != nil {
+		return "", nil
+	}
+	return active.ActiveSchemeID, nil
+}
+
+// SaveActiveSchemeID persists the active scheme ID to active.json.
+func SaveActiveSchemeID(id string) error {
+	ensureStoreDir()
+	active := struct {
+		ActiveSchemeID string `json:"activeSchemeId"`
+	}{ActiveSchemeID: id}
+	data, err := json.MarshalIndent(active, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal active state: %w", err)
+	}
+	tmpPath := activeStorePath() + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write active state: %w", err)
+	}
+	if err := os.Rename(tmpPath, activeStorePath()); err != nil {
+		if err2 := os.WriteFile(activeStorePath(), data, 0644); err2 != nil {
+			return fmt.Errorf("failed to save active state: %w", err2)
+		}
+		os.Remove(tmpPath)
+	}
+	return nil
+}
+
+// ClearActiveSchemeID removes the active.json file (e.g. when the active scheme is deleted).
+func ClearActiveSchemeID() {
+	os.Remove(activeStorePath())
+}
+
 // newUUID generates a simple UUID v4-like identifier
 func newUUID() string {
 	b := make([]byte, 16)

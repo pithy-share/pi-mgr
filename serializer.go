@@ -98,14 +98,14 @@ func serializeModels(models []Model) []modelJSON {
 			mj.Input = input
 		}
 
-		// contextWindow: omit if default 256000
-		if m.ContextWindow != 0 && m.ContextWindow != 256000 {
+		// contextWindow: omit only if zero (default 256000 still writes)
+		if m.ContextWindow != 0 {
 			cw := m.ContextWindow
 			mj.ContextWindow = &cw
 		}
 
-		// maxTokens: omit if default 64000
-		if m.MaxTokens != 0 && m.MaxTokens != 64000 {
+		// maxTokens: omit only if zero (default 64000 still writes)
+		if m.MaxTokens != 0 {
 			mt := m.MaxTokens
 			mj.MaxTokens = &mt
 		}

@@ -32,9 +32,13 @@
     </div>
 
     <!-- Scheme list -->
-    <div v-for="scheme in schemes" :key="scheme.id" class="card list-item" style="margin-bottom:8px;">
+    <div v-for="scheme in schemes" :key="scheme.id"
+      :class="['card list-item', { 'scheme-active': activeSchemeId === scheme.id }]" style="margin-bottom:8px;">
       <div style="flex:1;">
-        <span v-if="editingId !== scheme.id" style="font-weight:500;">{{ scheme.name }}</span>
+        <span v-if="editingId !== scheme.id" style="font-weight:500;">
+          {{ scheme.name }}
+          <span v-if="activeSchemeId === scheme.id" class="scheme-active-badge">已激活</span>
+        </span>
         <input
           v-else
           v-model="editName"
@@ -55,7 +59,8 @@
         <template v-else>
           <button class="btn-secondary btn-small" @click="startEdit(scheme)">编辑</button>
           <button class="btn-secondary btn-small" @click="handleDuplicate(scheme.id)">复制</button>
-          <button class="btn-success btn-small" @click="handleActivate(scheme.id)">激活</button>
+          <button v-if="activeSchemeId !== scheme.id" class="btn-success btn-small" @click="handleActivate(scheme.id)">激活</button>
+          <button v-else class="btn-small" style="background:#d5f5e3;color:var(--success);cursor:default;" disabled>已激活</button>
           <button class="btn-danger btn-small" @click="confirmDelete = scheme.id">删除</button>
           <button class="btn-primary btn-small" @click="$router.push(`/scheme/${scheme.id}`)">配置</button>
         </template>
@@ -82,6 +87,8 @@ import api from '../wails/api'
 import type { Scheme } from '../types'
 
 const showToast: any = inject('showToast')
+const activeSchemeId: any = inject('activeSchemeId')
+const refreshActiveScheme: any = inject('refreshActiveScheme')
 
 const schemes = ref<Scheme[]>([])
 const showCreate = ref(false)
@@ -183,6 +190,7 @@ async function handleActivate(id: string) {
   try {
     const a = api()
     await a.ActivateScheme(id)
+    await refreshActiveScheme?.()
     showToast?.('方案已激活，models.json 已更新', 'success')
   } catch (e: any) {
     showToast?.(e?.message || e, 'error')

@@ -20,6 +20,8 @@ export function ExportSchemes():Promise<void>;
 
 export function FetchProviderModels(arg1:string,arg2:string):Promise<Array<main.Model>>;
 
+export function GetActiveSchemeID():Promise<string>;
+
 export function ImportProviderModels(arg1:string,arg2:string,arg3:Array<main.Model>):Promise<number>;
 
 export function ImportSchemes():Promise<void>;

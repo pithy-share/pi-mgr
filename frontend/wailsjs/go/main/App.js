@@ -38,6 +38,10 @@ export function FetchProviderModels(arg1, arg2) {
   return window['go']['main']['App']['FetchProviderModels'](arg1, arg2);
 }
 
+export function GetActiveSchemeID() {
+  return window['go']['main']['App']['GetActiveSchemeID']();
+}
+
 export function ImportProviderModels(arg1, arg2, arg3) {
   return window['go']['main']['App']['ImportProviderModels'](arg1, arg2, arg3);
 }

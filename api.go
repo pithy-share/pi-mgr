@@ -65,7 +65,7 @@ func (a *App) UpdateScheme(scheme Scheme) error {
 	return fmt.Errorf("scheme not found: %s", scheme.ID)
 }
 
-// DeleteScheme removes a scheme by ID
+// DeleteScheme removes a scheme by ID, and clears active state if this scheme was active
 func (a *App) DeleteScheme(id string) error {
 	schemes, err := LoadSchemes()
 	if err != nil {
@@ -74,6 +74,9 @@ func (a *App) DeleteScheme(id string) error {
 	for i := range schemes {
 		if schemes[i].ID == id {
 			schemes = append(schemes[:i], schemes[i+1:]...)
+			if activeID, _ := GetActiveSchemeID(); activeID == id {
+				ClearActiveSchemeID()
+			}
 			return SaveSchemes(schemes)
 		}
 	}
@@ -109,13 +112,25 @@ func (a *App) DuplicateScheme(id string) (*Scheme, error) {
 	return nil, fmt.Errorf("scheme not found: %s", id)
 }
 
-// ActivateScheme writes the scheme to pi's models.json
+// ActivateScheme writes the scheme to pi's models.json and records it as active
 func (a *App) ActivateScheme(id string) error {
 	scheme, err := GetScheme(id)
 	if err != nil {
 		return err
 	}
-	return ActivateScheme(scheme)
+	if err := ActivateScheme(scheme); err != nil {
+		return err
+	}
+	return SaveActiveSchemeID(id)
+}
+
+// GetActiveSchemeID returns the ID of the last activated scheme, or empty string if none
+func (a *App) GetActiveSchemeID() string {
+	id, err := GetActiveSchemeID()
+	if err != nil {
+		return ""
+	}
+	return id
 }
 
 // =============================================================================

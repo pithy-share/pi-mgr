@@ -11,6 +11,7 @@ export interface AppAPI {
   DeleteScheme(id: string): Promise<void>
   DuplicateScheme(id: string): Promise<Scheme>
   ActivateScheme(id: string): Promise<void>
+  GetActiveSchemeID(): Promise<string>
 
   // Provider
   AddBuiltInProvider(schemeID: string, providerKey: string, apiKey: string, baseUrl: string): Promise<void>
@@ -52,6 +53,7 @@ function api(): AppAPI {
     DeleteScheme: () => Promise.resolve(),
     DuplicateScheme: () => Promise.resolve({ id: '2', name: 'dummy', providers: [] } as Scheme),
     ActivateScheme: () => Promise.resolve(),
+    GetActiveSchemeID: () => Promise.resolve(''),
     AddBuiltInProvider: () => Promise.resolve(),
     AddCustomProvider: () => Promise.resolve(),
     UpdateProvider: () => Promise.resolve(),
