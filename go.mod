@@ -24,6 +24,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/samber/lo v1.49.1 // indirect
+	github.com/tc-hib/winres v0.3.1 // indirect
 	github.com/tkrajina/go-reflector v0.5.8 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
@@ -36,3 +37,5 @@ require (
 )
 
 replace github.com/wailsapp/wails/v2 v2.12.0 => C:/Users/zyong/go/pkg/mod/github.com/wailsapp/wails/v2@v2.12.0
+
+replace github.com/tc-hib/winres v0.3.1 => C:/Users/zyong/go/pkg/mod/github.com/tc-hib/winres@v0.3.1
