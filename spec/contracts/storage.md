@@ -82,7 +82,7 @@ var BuiltInProviders = []BuiltInProvider{
 }
 ```
 
-**自定义供应商可用 API 类型**：`openai-completions`、`anthropic-messages`、`google-generative-ai`（前端的下拉列表，与内置的类型枚举是子集关系）。
+**自定义供应商可用 API 类型**（见 `builtin.go` `ValidAPITypes`）：`openai-completions`、`anthropic-messages`、`openai-responses`、`azure-openai-responses`、`openai-codex-responses`、`mistral-conversations`、`google-generative-ai`、`google-vertex`、`bedrock-converse-stream`。
 
 **重验条件**：pi 官方 providers 文档更新增删内置供应商时需同步更新。
 
@@ -118,8 +118,8 @@ var BuiltInProviders = []BuiltInProvider{
 | `name` | 仅当与 `id` 不同时输出 |
 | `reasoning` | 仅当为 `true` 时输出（省略 `false`） |
 | `input` | 从 InputText/InputImage 构建数组；若仅为 `["text"]`（默认）则省略 |
-| `contextWindow` | 仅当 ≠ 128000 时输出 |
-| `maxTokens` | 仅当 ≠ 16384 时输出 |
+| `contextWindow` | 仅当 ≠ 0 时输出（含默认值 256000） |
+| `maxTokens` | 仅当 ≠ 0 时输出（含默认值 64000） |
 | `cost` | 仅当任一 cost 子字段 ≠ 0 时输出；cost 内省略零值字段 |
 
 ### 内置供应商 models 合并

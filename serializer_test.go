@@ -357,11 +357,11 @@ func TestSerializeModel_DefaultsOmitted(t *testing.T) {
 	if len(mj.Input) != 0 {
 		t.Error("input should be omitted for default [\"text\"]")
 	}
-	if mj.ContextWindow != nil {
-		t.Error("contextWindow should be omitted at default 256000")
+	if mj.ContextWindow == nil {
+		t.Error("contextWindow should be output even at default 256000")
 	}
-	if mj.MaxTokens != nil {
-		t.Error("maxTokens should be omitted at default 64000")
+	if mj.MaxTokens == nil {
+		t.Error("maxTokens should be output even at default 64000")
 	}
 	if mj.Cost != nil {
 		t.Error("cost should be omitted when all zero")

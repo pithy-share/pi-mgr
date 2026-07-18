@@ -12,7 +12,7 @@ func ValidateScheme(scheme *Scheme) []string {
 }
 
 // ValidateProvider checks provider-level constraints.
-// allProviders includes the provider itself if it already exists in the scheme.
+// allProviders is the list of other providers in the scheme (excluding the one being validated).
 func ValidateProvider(prov *Provider, allProviders []Provider) []string {
 	var errs []string
 
