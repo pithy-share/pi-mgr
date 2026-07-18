@@ -1,7 +1,7 @@
 # 校验规则与错误矩阵
 
 **阅读时机**：改动前后端校验逻辑、错误消息、表单提交处理时。  
-**可核验依据**：`task/pi-provider-model-manager/plan.md` Step 1.7（Go validate.go），PRD AC-24–AC-29, AC-33。
+**可核验依据**：`validate.go`（ValidateScheme, ValidateProvider, ValidateModel），`api.go` 中各变更方法调用前的校验逻辑。
 
 ## 校验职责
 

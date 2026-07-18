@@ -18,19 +18,23 @@
 ```
 pi-mgr/                       # Wails 项目根（即当前仓库根）
 ├── main.go                   # Wails 入口
-├── app.go                    # Wails API 绑定方法
-├── models.go                 # 数据模型（Scheme, Provider, Model）
-├── store.go                  # schemes.json 持久化
+├── app.go                    # App struct, startup
+├── models.go                 # 数据模型（Scheme, Provider, Model, BuiltInProvider）
+├── store.go                  # schemes.json / active.json 持久化 + UUID 生成
 ├── serializer.go             # models.json 序列化
-├── activate.go               # 激活写入
+├── activate.go               # 激活写入 models.json
 ├── validate.go               # 校验规则
-├── builtin.go                # 内置供应商目录
+├── builtin.go                # 内置供应商目录 + 有效 API 类型
+├── api.go                    # Wails API 方法（CRUD + 导入导出 + 目录查询 + 辅助函数）
+├── fetch.go                  # HTTP 模型列表拉取（FetchProviderModels）
+├── ssh_sync.go               # SSH 连接测试 + 配置同步（SyncPiConfig）
+├── ssh_settings.go           # SSH 地址持久化（settings.json）
 ├── wails.json                # Wails 项目配置
 ├── frontend/                 # Vue 3 前端
 │   ├── src/
 │   │   ├── views/            # 页面组件（SchemeList, SchemeEditor）
 │   │   ├── components/       # 可复用组件
-│   │   └── wails/            # Wails 生成的运行时绑定
+│   │   └── wails/            # Wails 生成的运行时绑定 + dev mode fallback
 │   └── package.json
 └── build/                    # Wails 构建产物
 ```
@@ -55,7 +59,9 @@ wails build     # 生产构建，输出 Windows exe
 
 | 用途 | 路径 |
 |---|---|
-| 工具持久化数据 | `%APPDATA%\pi-mgr\schemes.json` |
+| 工具持久化数据（方案） | `%APPDATA%\pi-mgr\schemes.json` |
+| 工具持久化数据（应用设置） | `%APPDATA%\pi-mgr\settings.json` |
+| 活跃方案追踪 | `%APPDATA%\pi-mgr\active.json` |
 | pi models.json | `%USERPROFILE%\.pi\agent\models.json` |
 | pi agent 目录 | `%USERPROFILE%\.pi\agent\` |
 

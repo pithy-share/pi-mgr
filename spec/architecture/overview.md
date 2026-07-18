@@ -1,7 +1,7 @@
 # 架构概览
 
-**阅读时机**：涉及项目结构、模块边界、API 绑定、前端路由或跨层数据流时。  
-**可核验依据**：`task/pi-provider-model-manager/plan.md` Phase 1–3。
+**阅读时机**：涉及项目结构、模块边界、API 绑定、前端路由、模型拉取/导入、SSH 同步或跨层数据流时。  
+**可核验依据**：`app.go`, `api.go`, `fetch.go`, `ssh_sync.go`, `ssh_settings.go` 中导出的 `App` 方法。
 
 ## 分层
 
@@ -17,7 +17,10 @@
 │  ├── serializer.go 输出序列化  │
 │  ├── activate.go 激活写入      │
 │  ├── validate.go 校验规则      │
-│  └── builtin.go 内置供应商目录  │
+│  ├── builtin.go 内置供应商目录  │
+│  ├── fetch.go   模型列表拉取    │
+│  ├── ssh_sync.go SSH 配置同步   │
+│  └── ssh_settings.go SSH 地址持久化 │
 ├──────────────────────────────┤
 │  本地文件系统                   │
 │  ├── %APPDATA%/pi-mgr/schemes.json  (工具自身数据)  │
@@ -62,7 +65,31 @@
 | 方法 | 输入 | 输出 |
 |---|---|---|
 | `ListBuiltInProviders()` | — | `[]BuiltInProvider` |
-| `ListAPITypes()` | — | `[]string`（`openai-completions`, `anthropic-messages`, `google-generative-ai`） |
+| `ListAPITypes()` | — | `[]string`（9 种有效 API 类型） |
+| `GetActiveSchemeID()` | — | `string`（空字符串表示无激活方案） |
+
+### 模型拉取与导入
+
+| 方法 | 输入 | 输出 | 副作用 |
+|---|---|---|---|
+| `FetchProviderModels(schemeID, providerKey)` | 方案 ID、provider key | `([]Model, error)` | HTTP GET `{baseURL}/models`，仅返回 id 和 name |
+| `ImportProviderModels(schemeID, providerKey, models)` | 方案 ID、provider key、Model 切片 | `(int, error)` | 写入 schemes.json，按 ID 跳过已存在项 |
+
+### 方案导入/导出
+
+| 方法 | 输入 | 输出 | 副作用 |
+|---|---|---|---|
+| `ExportSchemes()` | — | `error` | 保存文件对话框 → 原子写入用户选定路径 |
+| `ImportSchemes()` | — | `error` | 打开文件对话框 → 合并写入 schemes.json，全量校验 |
+
+### SSH 同步
+
+| 方法 | 输入 | 输出 | 副作用 |
+|---|---|---|---|
+| `SaveSSHAddress(address)` | `address string` | `error` | 写入 `%APPDATA%/pi-mgr/settings.json` |
+| `LoadSSHAddress()` | — | `(string, error)` | 读取 `settings.json` |
+| `TestSSHConnection(address)` | `address string` | `SSHConnectionResult` | 执行 `ssh -p -o BatchMode=yes user@host exit`，15s 超时 |
+| `SyncPiConfig(address)` | `address string` | `SyncResult` | scp + ssh 同步 models.json、settings.json、prompts/、skills/ 到远端 |
 
 ## 前端路由
 
@@ -88,5 +115,44 @@
     → SerializeToModelsJSON(scheme)
     → 解析 ~/.pi/agent/ 目录（不存在则创建）
     → 覆盖写入 models.json
+    → SaveActiveSchemeID(id) → 写入 active.json
     → 返回成功/错误
 ```
+
+## 模型拉取（FetchProviderModels）
+
+`fetch.go` 通过 HTTP GET 从 `{provider.BaseURL}/models` 拉取 OpenAI 兼容的模型列表。
+
+- **请求**：GET `{baseURL}/models`，`Authorization: Bearer {apiKey}`（apiKey 为空时不发送 Authorization header）
+- **超时**：10 秒
+- **响应解析**：期望 `{"data": [{"id": "...", "name": "..."}]}`，仅填充 ID 和 Name
+- **默认值**：`Reasoning=false, InputText=true, InputImage=false, ContextWindow=256000, MaxTokens=64000, Cost*=0`
+- **错误**：网络不可达、非 200 状态码、JSON 解析失败、缺少 data 字段 → 均返回中文错误
+
+## SSH 同步
+
+`ssh_sync.go` + `ssh_settings.go` 实现通过 SSH/SCP 将本地 pi 配置同步到远程机器。
+
+### 地址解析
+
+`parseSSHAddress(address)` 解析 `user@host[:port]` 格式，端口默认 22。
+
+### 连接测试（TestSSHConnection）
+
+执行 `ssh -p {port} -o ConnectTimeout=10 -o BatchMode=yes {user}@{host} exit`（15s 超时），按错误模式分类返回中文消息：超时、拒绝、主机密钥验证失败、认证失败、无法到达、DNS 解析失败。
+
+### 配置同步（SyncPiConfig）
+
+1. 解析地址 → 预检查 SSH 连通性 → 创建远程 `~/.pi/agent/` 目录
+2. 逐项同步（每项独立，失败不影响其他项）：
+   - `settings.json` / `models.json`：`scp` 直接传输
+   - `prompts/` / `skills/`：`scp -r` 到临时目录 → `ssh rm -rf + mv` 原子替换（模拟 rsync --delete）
+3. 整体状态：全部成功 → `"success"`，部分失败 → `"partial"`，全部失败 → `"failed"`
+
+### SSH 地址持久化
+
+`%APPDATA%/pi-mgr/settings.json` 存储 `{"sshAddress": "user@host[:port]"}`，原子写入（temp + rename）。
+
+### Windows 适配
+
+所有 `exec.CommandContext` 通过 `syscall.SysProcAttr{HideWindow: true}` 隐藏终端窗口。

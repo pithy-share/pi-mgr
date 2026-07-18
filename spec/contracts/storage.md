@@ -1,12 +1,13 @@
 # 存储格式与序列化契约
 
-**阅读时机**：改动 schemes.json 持久化、models.json 输出格式、数据模型字段、序列化逻辑或内置供应商目录时。  
+**阅读时机**：改动 schemes.json 持久化、settings.json 应用设置、models.json 输出格式、数据模型字段、序列化逻辑或内置供应商目录时。  
 **可核验依据**：
-- 数据模型：`task/pi-provider-model-manager/plan.md` Step 1.2（Go 结构体）
-- 存储层：Step 1.3（schemes.json 路径与原子写入）
-- 内置目录：Step 1.4（BuiltInProviders）
-- 序列化器：Step 1.5（SerializeToModelsJSON 逻辑）
-- 激活写入：Step 1.6（ActivateScheme）
+- 数据模型：`models.go`（Scheme, Provider, Model, BuiltInProvider）
+- 存储层：`store.go`（LoadSchemes, SaveSchemes, GetScheme, 活跃方案追踪）
+- 应用设置：`ssh_settings.go`（loadAppSettings, saveAppSettings, appSettings）
+- 内置目录：`builtin.go`（BuiltInProviders, ValidAPITypes）
+- 序列化器：`serializer.go`（SerializeToModelsJSON）
+- 激活写入：`activate.go`（ActivateScheme）
 
 ## 数据模型（Go 结构体）
 
@@ -57,9 +58,29 @@ type BuiltInProvider struct {
 
 - **路径**：`%APPDATA%\pi-mgr\schemes.json`
 - **格式**：`[]Scheme` 的 JSON 数组
-- **原子写入**：先写临时文件再 rename，防止写入中断导致数据损坏
-- **初始化**：文件不存在时返回空切片
+- **原子写入**：先写临时文件再 rename，防止写入中断导致数据损坏；跨卷 rename 失败时回退直接写并清理临时文件
+- **初始化**：文件不存在或为空时返回空切片
 - **并发**：单进程单写者，不做锁
+
+### 核心函数（`store.go`）
+
+| 函数 | 签名 | 说明 |
+|---|---|---|
+| `storePath()` | `string` | 返回 `%APPDATA%/pi-mgr/schemes.json` 路径 |
+| `LoadSchemes()` | `([]Scheme, error)` | 读取全部方案，文件不存在返回空切片 |
+| `SaveSchemes(schemes)` | `error` | 原子写入（temp + rename） |
+| `GetScheme(id)` | `(*Scheme, error)` | 按 ID 查找单个方案，未找到返回 error |
+| `newUUID()` | `string` | `crypto/rand` 实现 UUID v4 |
+
+### 活跃方案追踪（`active.json`）
+
+激活操作后记录当前激活的方案 ID，存储于 `%APPDATA%/pi-mgr/active.json`。
+
+| 函数 | 说明 |
+|---|---|
+| `GetActiveSchemeID() (string, error)` | 读取活跃方案 ID，文件不存在返回空字符串 |
+| `SaveActiveSchemeID(id string) error` | 保存活跃方案 ID（原子写入） |
+| `ClearActiveSchemeID()` | 删除 active.json（方案被删除时调用） |
 
 ## 内置供应商目录（硬编码）
 
@@ -128,10 +149,38 @@ var BuiltInProviders = []BuiltInProvider{
 
 ## 激活写入
 
-`ActivateScheme(scheme *Scheme) error`：
+`ActivateScheme(scheme *Scheme) error`（`activate.go`）：
 1. 调用 `SerializeToModelsJSON(scheme)` 获取 JSON
 2. 解析 `%USERPROFILE%\.pi\agent\` 目录，不存在则创建
-3. 覆盖写入 `models.json`
+3. 覆盖写入 `models.json`（非原子，目标路径可能跨文件系统）
 4. 写入失败返回错误
+5. 上层 `App.ActivateScheme(id)` 额外调用 `SaveActiveSchemeID(id)` 写入 `active.json`
 
 **注意**：不改动 `schemes.json`，激活是纯读+输出操作。
+
+## 应用设置（settings.json）
+
+`ssh_settings.go` 管理应用级设置，存储于 `%APPDATA%/pi-mgr/settings.json`，独立于 `schemes.json`。
+
+### 数据模型
+
+```go
+type appSettings struct {
+    SSHAddress string `json:"sshAddress"` // user@host[:port] 格式
+}
+```
+
+### 持久化
+
+- **路径**：`%APPDATA%\pi-mgr\settings.json`
+- **格式**：`{"sshAddress": "..."}` 单对象 JSON
+- **原子写入**：同 schemes.json（temp + rename，跨卷回退直接写）
+- **初始化**：文件不存在或解析失败时返回空 `appSettings{}`
+- **方法**：`loadAppSettings()` / `saveAppSettings(settings)`
+
+### Wails API
+
+| 方法 | 说明 |
+|---|---|
+| `SaveSSHAddress(address string) error` | 持久化 SSH 地址 |
+| `LoadSSHAddress() (string, error)` | 读取已保存的 SSH 地址 |
