@@ -42,6 +42,29 @@ export interface AppAPI {
   // Catalog
   ListBuiltInProviders(): Promise<BuiltInProvider[]>
   ListAPITypes(): Promise<string[]>
+
+  // Pi Management
+  GetPiVersion(): Promise<string>
+  GetPiPackages(): Promise<string>
+  UpdatePiSelf(): Promise<string>
+  UpdateAllPiPackages(): Promise<string>
+  UpdatePiPackage(source: string): Promise<string>
+  RemovePiPackage(source: string): Promise<string>
+
+  // Pi Management (Remote via SSH)
+  GetRemotePiVersion(sshAddress: string): Promise<string>
+  GetRemotePiPackages(sshAddress: string): Promise<string>
+  UpdateRemotePiSelf(sshAddress: string): Promise<string>
+  UpdateRemoteAllPiPackages(sshAddress: string): Promise<string>
+  UpdateRemotePiPackage(sshAddress: string, source: string): Promise<string>
+  RemoveRemotePiPackage(sshAddress: string, source: string): Promise<string>
+
+  // Pi Install
+  InstallPiPackage(source: string): Promise<string>
+  InstallRemotePiPackage(sshAddress: string, source: string): Promise<string>
+
+  // CBM
+  GetCbmRules(): Promise<string>
 }
 
 import type { Config, Provider, Model, BuiltInProvider, SyncResult } from '../types'
@@ -73,6 +96,21 @@ function api(): AppAPI {
     SyncPiConfig: () => Promise.resolve({ overall: 'failed' as const, items: [] }),
     ListBuiltInProviders: () => Promise.resolve([]),
     ListAPITypes: () => Promise.resolve([]),
+    GetPiVersion: () => Promise.resolve('0.80.10 (dev mode)'),
+    GetPiPackages: () => Promise.resolve(''),
+    UpdatePiSelf: () => Promise.resolve('dev mode: upgrade skipped'),
+    UpdateAllPiPackages: () => Promise.resolve('dev mode: upgrade skipped'),
+    UpdatePiPackage: () => Promise.resolve('dev mode: upgrade skipped'),
+    RemovePiPackage: () => Promise.resolve('dev mode: remove skipped'),
+    GetRemotePiVersion: () => Promise.resolve('0.80.10 (remote dev)'),
+    GetRemotePiPackages: () => Promise.resolve(''),
+    UpdateRemotePiSelf: () => Promise.resolve('dev mode: remote upgrade skipped'),
+    UpdateRemoteAllPiPackages: () => Promise.resolve('dev mode: remote upgrade skipped'),
+    UpdateRemotePiPackage: () => Promise.resolve('dev mode: remote upgrade skipped'),
+    RemoveRemotePiPackage: () => Promise.resolve('dev mode: remote remove skipped'),
+    InstallPiPackage: () => Promise.resolve('dev mode: install skipped'),
+    InstallRemotePiPackage: () => Promise.resolve('dev mode: remote install skipped'),
+    GetCbmRules: () => Promise.resolve('## cbm 使用规则\n\n开发模式示例内容'),
   }
 }
 

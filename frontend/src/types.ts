@@ -49,6 +49,11 @@ export interface Toast {
   type: 'success' | 'error'
 }
 
+export interface PiPackage {
+  source: string    // 完整来源标识，如 "npm:@foo/bar"
+  path: string      // 安装路径
+}
+
 // Default model values per AC-17
 export function defaultModel(): Model {
   return {

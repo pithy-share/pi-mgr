@@ -3,11 +3,13 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import App from './App.vue'
 import ConfigPage from './views/ConfigPage.vue'
 import SshSync from './views/SshSync.vue'
+import PiManage from './views/PiManage.vue'
 import './style.css'
 
 const routes = [
   { path: '/', component: ConfigPage },
   { path: '/ssh-sync', component: SshSync },
+  { path: '/pi-manage', component: PiManage },
 ]
 
 const router = createRouter({

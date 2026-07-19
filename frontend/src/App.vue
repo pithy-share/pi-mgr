@@ -2,7 +2,12 @@
   <div id="app-root">
     <header class="header">
       <div style="display:flex;align-items:center;gap:16px;">
-        <h1>Pi Provider & Model Manager</h1>
+        <h1>Pi Provider &amp; Model Manager</h1>
+        <nav class="nav-tabs">
+          <router-link to="/" class="nav-tab" :class="{ active: $route.path === '/' }">方案管理</router-link>
+          <router-link to="/ssh-sync" class="nav-tab" :class="{ active: $route.path === '/ssh-sync' }">SSH 同步</router-link>
+          <router-link to="/pi-manage" class="nav-tab" :class="{ active: $route.path === '/pi-manage' }">Pi 管理</router-link>
+        </nav>
       </div>
     </header>
     <router-view />

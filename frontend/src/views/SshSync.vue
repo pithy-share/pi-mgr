@@ -1,9 +1,6 @@
 <template>
   <div style="max-width:600px;margin:0 auto;padding:20px;">
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
-      <button class="nav-back" @click="$router.push('/')">← 返回方案列表</button>
-      <h2>SSH 配置同步</h2>
-    </div>
+    <h2 style="margin-bottom:20px;">SSH 配置同步</h2>
 
     <!-- SSH Address input -->
     <div class="card" style="margin-bottom:16px;">
