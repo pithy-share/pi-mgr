@@ -25,7 +25,7 @@ pi-mgr/                       # Wails 项目根（即当前仓库根）
 ├── activate.go               # 激活写入 models.json
 ├── validate.go               # 校验规则
 ├── builtin.go                # 内置供应商目录 + 有效 API 类型
-├── api.go                    # Wails API 方法（CRUD + 导入导出 + 目录查询 + 辅助函数）
+├── api.go                    # Wails API 方法（CRUD + 排序 + 批量操作 + 连通性测试 + 导入导出 + 目录查询）
 ├── fetch.go                  # HTTP 模型列表拉取（FetchProviderModels）
 ├── ssh_sync.go               # SSH 连接测试 + 配置同步（SyncPiConfig）
 ├── ssh_settings.go           # SSH 地址持久化（settings.json）
@@ -34,6 +34,7 @@ pi-mgr/                       # Wails 项目根（即当前仓库根）
 │   ├── src/
 │   │   ├── views/            # 页面组件（SchemeList, SchemeEditor）
 │   │   ├── components/       # 可复用组件
+│   │   ├── presets.ts        # 模型预设常量（MODEL_PRESETS）
 │   │   └── wails/            # Wails 生成的运行时绑定 + dev mode fallback
 │   └── package.json
 └── build/                    # Wails 构建产物

@@ -5,7 +5,7 @@ pi-mgr 是 Pi Coding Agent 的 Windows 桌面配置管理工具（Go + Wails v2 
 ## 全局硬规则
 
 - **平台**：仅 Windows；`~/.pi/` 解析为 `%USERPROFILE%\.pi\`，应用数据存 `%APPDATA%\pi-mgr\`
-- **网络调用**：`FetchProviderModels` 发起 HTTP GET 请求拉取模型列表（仅此一处）；不校验 API key 有效性；SSH 同步使用本地 ssh/scp 命令
+- **网络调用**：`FetchProviderModels` 和 `TestProviderConnectivity` 发起 HTTP GET 请求（仅此两处）；不校验 API key 有效性；SSH 同步使用本地 ssh/scp 命令
 - **不管理 pi 其他配置**：仅 `models.json`；不碰 `auth.json`、`settings.json`、extensions
 - **不导入现有 models.json**：v1 从零创建方案，不读取已有 pi 配置
 - **多实例**：允许，最后激活者生效；不做冲突检测
@@ -50,13 +50,17 @@ read                                      → 回退（仅 spec、配置、或 c
 | 涉及前端页面、路由、组件结构 | `spec/architecture/overview.md` (§前端) |
 | 涉及内置供应商列表、API 类型枚举 | `spec/contracts/storage.md` (§内置供应商目录) |
 | 涉及 HTTP 模型拉取（FetchProviderModels）、批量导入（ImportProviderModels） | `spec/architecture/overview.md` (§模型拉取与导入) |
+| 涉及 Provider/Model 排序（ReorderProviders, ReorderModels） | `spec/architecture/overview.md` (§排序) |
+| 涉及批量删除模型（RemoveModels） | `spec/architecture/overview.md` (§批量操作) |
+| 涉及供应商连通性测试（TestProviderConnectivity） | `spec/architecture/overview.md` (§连通性测试) |
+| 涉及模型预设（MODEL_PRESETS） | `spec/architecture/overview.md` (§模型预设) |
 | 涉及 SSH 连接测试、远程配置同步、SSH 地址持久化 | `spec/architecture/overview.md` (§SSH 同步) |
 | 涉及 settings.json（SSH 地址等应用级设置） | `spec/contracts/storage.md` (§应用设置) |
 | 涉及项目构建、命名规范、平台条件 | `spec/conventions/project.md` |
 
 ## 快速链接
 
-- 架构概览、模块边界、API 绑定、SSH 同步：`spec/architecture/overview.md`
+- 架构概览、模块边界、API 绑定、SSH 同步、排序、批量操作、连通性测试、模型预设：`spec/architecture/overview.md`
 - 存储格式、序列化契约、内置供应商目录、应用设置：`spec/contracts/storage.md`
 - 验证规则与错误矩阵：`spec/contracts/validation.md`
 - 项目约定与构建：`spec/conventions/project.md`

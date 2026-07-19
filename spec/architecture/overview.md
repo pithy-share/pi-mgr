@@ -1,7 +1,7 @@
 # 架构概览
 
 **阅读时机**：涉及项目结构、模块边界、API 绑定、前端路由、模型拉取/导入、SSH 同步或跨层数据流时。  
-**可核验依据**：`app.go`, `api.go`, `fetch.go`, `ssh_sync.go`, `ssh_settings.go` 中导出的 `App` 方法。
+**可核验依据**：`app.go`, `api.go`, `fetch.go`, `ssh_sync.go`, `ssh_settings.go` 中导出的 `App` 方法；`frontend/src/presets.ts`（模型预设）。
 
 ## 分层
 
@@ -59,6 +59,35 @@
 | `AddModel(schemeID, providerKey, model)` | 方案 ID、provider key、Model | `error` | 写入 schemes.json，校验 ID 重复 |
 | `UpdateModel(schemeID, providerKey, model)` | 方案 ID、provider key、Model | `error` | 写入 schemes.json |
 | `RemoveModel(schemeID, providerKey, modelID)` | 方案 ID、provider key、model ID | `error` | 写入 schemes.json（含确认） |
+
+### 排序
+
+| 方法 | 输入 | 输出 | 副作用 |
+|---|---|---|---|
+| `ReorderProviders(schemeID, orderedKeys)` | 方案 ID、按新顺序排列的 provider key 切片 | `error` | 写入 schemes.json；set-equality 校验（长度、存在性、重复），失败返回 `"供应商列表不一致"` |
+| `ReorderModels(schemeID, providerKey, orderedIDs)` | 方案 ID、provider key、按新顺序排列的 model ID 切片 | `error` | 写入 schemes.json；set-equality 校验，失败返回 `"模型列表不一致"` |
+
+**排序契约**：Reorder API 仅重排切片顺序，不修改 Key/ID 或其他字段；唯一性约束由现有校验保证。Go 切片顺序决定序列化输出顺序。
+
+### 批量操作
+
+| 方法 | 输入 | 输出 | 副作用 |
+|---|---|---|---|
+| `RemoveModels(schemeID, providerKey, modelIDs)` | 方案 ID、provider key、待删除 model ID 切片 | `(int, error)` | 写入 schemes.json；返回实际删除数量；不存在的 ID 自然跳过；`removed == 0` 时不写入返回 `(0, nil)` |
+
+### 连通性测试
+
+| 方法 | 输入 | 输出 | 副作用 |
+|---|---|---|---|
+| `TestProviderConnectivity(schemeID, providerKey)` | 方案 ID、provider key | `(string, error)` | **无持久化**；HTTP GET `{baseURL}/models`，Bearer 认证（空 key 不发），10s 超时 |
+
+**连通性测试契约**：
+- 仅支持 `openai-completions`、`openai-responses`、`azure-openai-responses` 三种 API 类型，其他类型返回 `"该 API 类型暂不支持连通性测试"`
+- BaseURL 为空时返回 `"请先配置 Base URL"`
+- 2xx 响应 → `"连接成功，API 可达"`
+- 网络错误 → `"无法连接，请检查 Base URL 和网络"`
+- 非 2xx → `"API 返回错误（状态码 %d），请检查 API Key"`
+- 内置供应商通过查找 `BuiltInProviders` 获取实际 APIType
 
 ### 目录查询
 
@@ -128,6 +157,12 @@
 - **响应解析**：期望 `{"data": [{"id": "...", "name": "..."}]}`，仅填充 ID 和 Name
 - **默认值**：`Reasoning=false, InputText=true, InputImage=false, ContextWindow=256000, MaxTokens=64000, Cost*=0`
 - **错误**：网络不可达、非 200 状态码、JSON 解析失败、缺少 data 字段 → 均返回中文错误
+
+## 模型预设
+
+`frontend/src/presets.ts` 导出 `MODEL_PRESETS` 常量数组，包含 11 个常用模型的默认参数。预设仅在**添加模型**时可选（编辑模式不显示），选择后自动填充 id/name/reasoning/inputText/inputImage/contextWindow/maxTokens 字段，Cost 字段保持 0。预设为纯前端硬编码，无后端 API 调用。
+
+**重验条件**：模型参数随供应商更新变化时需手动同步。
 
 ## SSH 同步
 
