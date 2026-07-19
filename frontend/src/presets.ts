@@ -1,5 +1,5 @@
 // Model presets — frontend hardcoded, no backend interaction.
-// Source values verified against official model docs (2025-07).
+// Model IDs sourced from https://pi.dev/models (2026).
 // Cost fields are all 0 by design — users fill those in manually.
 
 import type { Model } from './types'
@@ -10,16 +10,17 @@ export interface ModelPreset {
 }
 
 export const MODEL_PRESETS: ModelPreset[] = [
+  // --- OpenAI ---
   {
-    label: 'GPT-4o',
+    label: 'o4-mini',
     model: {
-      id: 'gpt-4o',
-      name: 'GPT-4o',
-      reasoning: false,
+      id: 'o4-mini',
+      name: 'o4-mini',
+      reasoning: true,
       inputText: true,
       inputImage: true,
-      contextWindow: 128000,
-      maxTokens: 16384,
+      contextWindow: 1000000,
+      maxTokens: 100000,
       costInput: 0,
       costOutput: 0,
       costCacheRead: 0,
@@ -27,15 +28,15 @@ export const MODEL_PRESETS: ModelPreset[] = [
     },
   },
   {
-    label: 'GPT-4o-mini',
+    label: 'o3',
     model: {
-      id: 'gpt-4o-mini',
-      name: 'GPT-4o-mini',
-      reasoning: false,
+      id: 'o3',
+      name: 'o3',
+      reasoning: true,
       inputText: true,
       inputImage: true,
-      contextWindow: 128000,
-      maxTokens: 16384,
+      contextWindow: 200000,
+      maxTokens: 100000,
       costInput: 0,
       costOutput: 0,
       costCacheRead: 0,
@@ -43,10 +44,10 @@ export const MODEL_PRESETS: ModelPreset[] = [
     },
   },
   {
-    label: 'GPT-4.1',
+    label: 'GPT-5.6 Luna',
     model: {
-      id: 'gpt-4.1',
-      name: 'GPT-4.1',
+      id: 'gpt-5.6-luna',
+      name: 'GPT-5.6 Luna',
       reasoning: false,
       inputText: true,
       inputImage: true,
@@ -59,10 +60,10 @@ export const MODEL_PRESETS: ModelPreset[] = [
     },
   },
   {
-    label: 'GPT-4.1-mini',
+    label: 'GPT-5.6 Sol',
     model: {
-      id: 'gpt-4.1-mini',
-      name: 'GPT-4.1-mini',
+      id: 'gpt-5.6-sol',
+      name: 'GPT-5.6 Sol',
       reasoning: false,
       inputText: true,
       inputImage: true,
@@ -75,10 +76,28 @@ export const MODEL_PRESETS: ModelPreset[] = [
     },
   },
   {
-    label: 'Claude Sonnet 4.5',
+    label: 'GPT-5.5',
     model: {
-      id: 'claude-sonnet-4-5',
-      name: 'Claude Sonnet 4.5',
+      id: 'gpt-5.5',
+      name: 'GPT-5.5',
+      reasoning: false,
+      inputText: true,
+      inputImage: true,
+      contextWindow: 1000000,
+      maxTokens: 32768,
+      costInput: 0,
+      costOutput: 0,
+      costCacheRead: 0,
+      costCacheWrite: 0,
+    },
+  },
+
+  // --- Anthropic ---
+  {
+    label: 'Claude Sonnet 5',
+    model: {
+      id: 'claude-sonnet-5',
+      name: 'Claude Sonnet 5',
       reasoning: true,
       inputText: true,
       inputImage: true,
@@ -91,10 +110,10 @@ export const MODEL_PRESETS: ModelPreset[] = [
     },
   },
   {
-    label: 'Claude Opus 4.5',
+    label: 'Claude Opus 4.8',
     model: {
-      id: 'claude-opus-4-5',
-      name: 'Claude Opus 4.5',
+      id: 'claude-opus-4-8',
+      name: 'Claude Opus 4.8',
       reasoning: true,
       inputText: true,
       inputImage: true,
@@ -113,9 +132,27 @@ export const MODEL_PRESETS: ModelPreset[] = [
       name: 'Claude Haiku 4.5',
       reasoning: false,
       inputText: true,
-      inputImage: false,
+      inputImage: true,
       contextWindow: 200000,
       maxTokens: 8192,
+      costInput: 0,
+      costOutput: 0,
+      costCacheRead: 0,
+      costCacheWrite: 0,
+    },
+  },
+
+  // --- Google ---
+  {
+    label: 'Gemini 3.5 Flash',
+    model: {
+      id: 'gemini-3.5-flash',
+      name: 'Gemini 3.5 Flash',
+      reasoning: false,
+      inputText: true,
+      inputImage: true,
+      contextWindow: 1048576,
+      maxTokens: 65536,
       costInput: 0,
       costOutput: 0,
       costCacheRead: 0,
@@ -138,30 +175,16 @@ export const MODEL_PRESETS: ModelPreset[] = [
       costCacheWrite: 0,
     },
   },
+
+  // --- DeepSeek ---
   {
-    label: 'Gemini 2.5 Flash',
+    label: 'DeepSeek V4 Pro',
     model: {
-      id: 'gemini-2.5-flash',
-      name: 'Gemini 2.5 Flash',
+      id: 'deepseek-v4-pro',
+      name: 'DeepSeek V4 Pro',
       reasoning: false,
       inputText: true,
       inputImage: true,
-      contextWindow: 1048576,
-      maxTokens: 65536,
-      costInput: 0,
-      costOutput: 0,
-      costCacheRead: 0,
-      costCacheWrite: 0,
-    },
-  },
-  {
-    label: 'DeepSeek V3',
-    model: {
-      id: 'deepseek-chat',
-      name: 'DeepSeek V3',
-      reasoning: false,
-      inputText: true,
-      inputImage: false,
       contextWindow: 128000,
       maxTokens: 8192,
       costInput: 0,
@@ -171,11 +194,11 @@ export const MODEL_PRESETS: ModelPreset[] = [
     },
   },
   {
-    label: 'DeepSeek R1',
+    label: 'DeepSeek V4 Flash',
     model: {
-      id: 'deepseek-reasoner',
-      name: 'DeepSeek R1',
-      reasoning: true,
+      id: 'deepseek-v4-flash',
+      name: 'DeepSeek V4 Flash',
+      reasoning: false,
       inputText: true,
       inputImage: false,
       contextWindow: 128000,
