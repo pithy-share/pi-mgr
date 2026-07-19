@@ -58,7 +58,8 @@ read                                      → 回退（仅 spec、配置、或 c
 | 涉及模型预设数据定义（MODEL_PRESETS） | `spec/architecture/overview.md` (§模型预设) |
 | 涉及 SSH 连接测试、远程配置同步、SSH 地址持久化 | `spec/architecture/overview.md` (§SSH 同步) |
 | 涉及 settings.json（SSH 地址等应用级设置） | `spec/contracts/storage.md` (§应用设置) |
-| 涉及项目构建、命名规范、平台条件 | `spec/conventions/project.md` |
+| 涉及项目构建、命名规范、平台条件、发布 Release | `spec/conventions/project.md` |
+| 涉及 Pi 管理（pi_manage.go）、内置提示词/安装/删除/预览、Pi 版本/插件管理 | `spec/conventions/project.md`（§发布 + §项目结构） |
 
 ## 快速链接
 
@@ -66,4 +67,4 @@ read                                      → 回退（仅 spec、配置、或 c
 - 前端组件树、状态管理、数据流、交互模式、样式系统：`spec/architecture/frontend.md`
 - 存储格式、序列化契约、内置供应商目录、应用设置：`spec/contracts/storage.md`
 - 验证规则与错误矩阵：`spec/contracts/validation.md`
-- 项目约定与构建：`spec/conventions/project.md`
+- 项目约定、构建、发布 Release：`spec/conventions/project.md`

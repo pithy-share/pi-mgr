@@ -29,15 +29,21 @@ pi-mgr/                       # Wails 项目根（即当前仓库根）
 ├── fetch.go                  # HTTP 模型列表拉取（FetchProviderModels）
 ├── ssh_sync.go               # SSH 连接测试 + 配置同步（SyncPiConfig）
 ├── ssh_settings.go           # SSH 地址持久化（settings.json）
+├── pi_manage.go              # Pi CLI 管理（版本、插件、提示词）+ //go:embed 内置提示词
 ├── wails.json                # Wails 项目配置
+├── pi/                       # pi 相关内置资源
+│   ├── cbm.md                # CBM 使用规则（//go:embed）
+│   └── agent/prompts/        # 内置提示词模板（//go:embed, 4 个 .md）
 ├── frontend/                 # Vue 3 前端
 │   ├── src/
-│   │   ├── views/            # 页面组件（SchemeList, SchemeEditor）
-│   │   ├── components/       # 可复用组件
+│   │   ├── views/            # 页面组件（ConfigPage, PiManage, SshSync）
+│   │   ├── types.ts          # TypeScript 类型定义（Config, Provider, Model, PromptTemplate 等）
 │   │   ├── presets.ts        # 模型预设常量（MODEL_PRESETS）
-│   │   └── wails/            # Wails 生成的运行时绑定 + dev mode fallback
+│   │   └── wails/api.ts      # Wails API TypeScript 绑定 + dev mode fallback
 │   └── package.json
-└── build/                    # Wails 构建产物
+└── build/                    # Wails 构建输出
+    └── bin/
+        └── pi-mgr.exe        # 生产构建产物（wails build 输出到此）
 ```
 
 ## 命名规范
@@ -52,9 +58,35 @@ pi-mgr/                       # Wails 项目根（即当前仓库根）
 ## 构建
 
 ```bash
-wails dev       # 开发模式，热重载
-wails build     # 生产构建，输出 Windows exe
+wails dev                     # 开发模式，热重载
+wails build                   # 生产构建，输出到 build/bin/pi-mgr.exe
 ```
+
+**注意**：生产构建产物位于 `build/bin/pi-mgr.exe`（约 12MB），**不是**项目根目录的 `pi-mgr.exe`（约 6.4MB，调试版本）。发布 Release 时必须使用 `build/bin/pi-mgr.exe`。
+
+## 发布
+
+```bash
+# 1. 打标签
+# 版本号示例：v0.1.0（feature）、v0.1.1（fix）
+git tag v0.1.0
+git push origin v0.1.0
+
+# 2. 创建 Release 并上传 build/bin/pi-mgr.exe
+git tag v0.1.0                                         # 如未打标签
+git push origin v0.1.0
+gh release create v0.1.0 \
+  --title "v0.1.0 - 版本名称" \
+  --notes "变更日志..." \
+  build/bin/pi-mgr.exe
+
+# 3. 更新已发布 Release（替换二进制）
+gh release upload v0.1.0 build/bin/pi-mgr.exe --clobber
+```
+
+**常见错误**:
+- ❌ 发布根目录的 `pi-mgr.exe`（调试版，Wails dev 产物）
+- ✅ 必须发布 `build/bin/pi-mgr.exe`（生产版，`wails build` 产物）
 
 ## 文件路径（Windows）
 
@@ -65,6 +97,8 @@ wails build     # 生产构建，输出 Windows exe
 | 活跃方案追踪 | `%APPDATA%\pi-mgr\active.json` |
 | pi models.json | `%USERPROFILE%\.pi\agent\models.json` |
 | pi agent 目录 | `%USERPROFILE%\.pi\agent\` |
+| pi 提示词目录 | `%USERPROFILE%\.pi\agent\prompts\` |
+| pi-mgr 内置提示词 | `pi/agent/prompts/`（//go:embed 嵌入二进制） |
 
 **路径解析**：Go 端使用 `os.UserConfigDir()` + `os.UserHomeDir()` 获取对应目录，不硬编码盘符。
 
