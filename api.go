@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -422,6 +424,218 @@ func (a *App) ImportProviderModels(schemeID, providerKey string, models []Model)
 		return 0, err
 	}
 	return added, nil
+}
+
+// =============================================================================
+// Batch operations
+// =============================================================================
+
+// RemoveModels removes multiple models from a provider. Best-effort: skips
+// models that don't exist, returns count of successfully removed models.
+// Returns (0, nil) when no models were removed (all skipped or not found).
+func (a *App) RemoveModels(schemeID string, providerKey string, modelIDs []string) (int, error) {
+	schemes, err := LoadSchemes()
+	if err != nil {
+		return 0, err
+	}
+	idx := findSchemeIndex(schemes, schemeID)
+	if idx < 0 {
+		return 0, fmt.Errorf("scheme not found: %s", schemeID)
+	}
+
+	scheme := &schemes[idx]
+	pidx := findProviderIndex(scheme, providerKey)
+	if pidx < 0 {
+		return 0, fmt.Errorf("provider not found: %s", providerKey)
+	}
+
+	prov := &scheme.Providers[pidx]
+
+	// Build set for O(1) lookup
+	toRemove := make(map[string]bool, len(modelIDs))
+	for _, id := range modelIDs {
+		toRemove[id] = true
+	}
+
+	// Filter out removed models
+	kept := make([]Model, 0, len(prov.Models))
+	for _, m := range prov.Models {
+		if !toRemove[m.ID] {
+			kept = append(kept, m)
+		}
+	}
+
+	removed := len(prov.Models) - len(kept)
+	if removed == 0 {
+		return 0, nil
+	}
+
+	prov.Models = kept
+	if err := SaveSchemes(schemes); err != nil {
+		return 0, err
+	}
+	return removed, nil
+}
+
+// ReorderProviders reorders providers in a scheme by the given key order.
+func (a *App) ReorderProviders(schemeID string, orderedKeys []string) error {
+	schemes, err := LoadSchemes()
+	if err != nil {
+		return err
+	}
+	idx := findSchemeIndex(schemes, schemeID)
+	if idx < 0 {
+		return fmt.Errorf("scheme not found: %s", schemeID)
+	}
+
+	scheme := &schemes[idx]
+
+	// Validate: orderedKeys must match existing provider keys exactly
+	if len(orderedKeys) != len(scheme.Providers) {
+		return fmt.Errorf("供应商列表不一致")
+	}
+
+	// Build index map for reordering
+	indexByKey := make(map[string]int, len(scheme.Providers))
+	for i, p := range scheme.Providers {
+		indexByKey[p.Key] = i
+	}
+
+	// Check every ordered key exists, and check for duplicates in orderedKeys
+	seen := make(map[string]bool, len(orderedKeys))
+	reordered := make([]Provider, 0, len(scheme.Providers))
+	for _, key := range orderedKeys {
+		pos, ok := indexByKey[key]
+		if !ok {
+			return fmt.Errorf("供应商列表不一致")
+		}
+		if seen[key] {
+			return fmt.Errorf("供应商列表不一致")
+		}
+		seen[key] = true
+		reordered = append(reordered, scheme.Providers[pos])
+	}
+
+	scheme.Providers = reordered
+	return SaveSchemes(schemes)
+}
+
+// ReorderModels reorders models in a provider within a scheme.
+func (a *App) ReorderModels(schemeID string, providerKey string, orderedIDs []string) error {
+	schemes, err := LoadSchemes()
+	if err != nil {
+		return err
+	}
+	idx := findSchemeIndex(schemes, schemeID)
+	if idx < 0 {
+		return fmt.Errorf("scheme not found: %s", schemeID)
+	}
+
+	scheme := &schemes[idx]
+	pidx := findProviderIndex(scheme, providerKey)
+	if pidx < 0 {
+		return fmt.Errorf("provider not found: %s", providerKey)
+	}
+
+	prov := &scheme.Providers[pidx]
+
+	// Validate: orderedIDs must match existing model IDs exactly
+	if len(orderedIDs) != len(prov.Models) {
+		return fmt.Errorf("模型列表不一致")
+	}
+
+	// Build index map for reordering
+	indexByID := make(map[string]int, len(prov.Models))
+	for i, m := range prov.Models {
+		indexByID[m.ID] = i
+	}
+
+	// Check every ordered ID exists, and check for duplicates
+	seen := make(map[string]bool, len(orderedIDs))
+	reordered := make([]Model, 0, len(prov.Models))
+	for _, id := range orderedIDs {
+		pos, ok := indexByID[id]
+		if !ok {
+			return fmt.Errorf("模型列表不一致")
+		}
+		if seen[id] {
+			return fmt.Errorf("模型列表不一致")
+		}
+		seen[id] = true
+		reordered = append(reordered, prov.Models[pos])
+	}
+
+	prov.Models = reordered
+	return SaveSchemes(schemes)
+}
+
+// =============================================================================
+// Connectivity test
+// =============================================================================
+
+// TestProviderConnectivity tests connectivity to a provider's API endpoint.
+// Returns a Chinese status message. Does not persist any data.
+func (a *App) TestProviderConnectivity(schemeID string, providerKey string) (string, error) {
+	scheme, err := GetScheme(schemeID)
+	if err != nil {
+		return "", err
+	}
+
+	pidx := findProviderIndex(scheme, providerKey)
+	if pidx < 0 {
+		return "", fmt.Errorf("provider not found: %s", providerKey)
+	}
+	prov := scheme.Providers[pidx]
+
+	// Only openai-compat types are supported
+	apiType := prov.APIType
+	if prov.BuiltIn {
+		for _, b := range BuiltInProviders {
+			if b.Key == prov.Key {
+				apiType = b.APIType
+				break
+			}
+		}
+	}
+	switch apiType {
+	case "openai-completions", "openai-responses", "azure-openai-responses":
+		// supported
+	default:
+		return "", fmt.Errorf("该 API 类型暂不支持连通性测试")
+	}
+
+	// baseUrl required
+	if strings.TrimSpace(prov.BaseURL) == "" {
+		return "", fmt.Errorf("请先配置 Base URL")
+	}
+
+	baseURL := strings.TrimRight(prov.BaseURL, "/")
+	url := baseURL + "/models"
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	if prov.APIKey != "" {
+		req.Header.Set("Authorization", "Bearer "+prov.APIKey)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "无法连接，请检查 Base URL 和网络", nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return "连接成功，API 可达", nil
+	}
+
+	return fmt.Sprintf("API 返回错误（状态码 %d），请检查 API Key", resp.StatusCode), nil
 }
 
 // =============================================================================

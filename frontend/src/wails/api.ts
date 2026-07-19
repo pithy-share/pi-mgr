@@ -23,8 +23,16 @@ export interface AppAPI {
   AddModel(schemeID: string, providerKey: string, model: Model): Promise<void>
   UpdateModel(schemeID: string, providerKey: string, model: Model): Promise<void>
   RemoveModel(schemeID: string, providerKey: string, modelID: string): Promise<void>
+  RemoveModels(schemeID: string, providerKey: string, modelIDs: string[]): Promise<number>
+  ReorderModels(schemeID: string, providerKey: string, orderedIDs: string[]): Promise<void>
   FetchProviderModels(schemeID: string, providerKey: string): Promise<Model[]>
   ImportProviderModels(schemeID: string, providerKey: string, models: Model[]): Promise<number>
+
+  // Provider reorder
+  ReorderProviders(schemeID: string, orderedKeys: string[]): Promise<void>
+
+  // Connectivity
+  TestProviderConnectivity(schemeID: string, providerKey: string): Promise<string>
 
   // Export / Import
   ExportSchemes(): Promise<void>
@@ -61,8 +69,12 @@ function api(): AppAPI {
     AddModel: () => Promise.resolve(),
     UpdateModel: () => Promise.resolve(),
     RemoveModel: () => Promise.resolve(),
+    RemoveModels: () => Promise.resolve(0),
+    ReorderModels: () => Promise.resolve(),
     FetchProviderModels: () => Promise.resolve([] as Model[]),
     ImportProviderModels: () => Promise.resolve(0),
+    ReorderProviders: () => Promise.resolve(),
+    TestProviderConnectivity: () => Promise.resolve(''),
     ExportSchemes: () => Promise.resolve(),
     ImportSchemes: () => Promise.resolve(),
     TestSSHConnection: () => Promise.resolve({ success: false, message: 'dev mode' }),

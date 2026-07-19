@@ -70,8 +70,20 @@ export function RemoveModel(arg1, arg2, arg3) {
   return window['go']['main']['App']['RemoveModel'](arg1, arg2, arg3);
 }
 
+export function RemoveModels(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RemoveModels'](arg1, arg2, arg3);
+}
+
 export function RemoveProvider(arg1, arg2) {
   return window['go']['main']['App']['RemoveProvider'](arg1, arg2);
+}
+
+export function ReorderModels(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ReorderModels'](arg1, arg2, arg3);
+}
+
+export function ReorderProviders(arg1, arg2) {
+  return window['go']['main']['App']['ReorderProviders'](arg1, arg2);
 }
 
 export function SaveSSHAddress(arg1) {
@@ -80,6 +92,10 @@ export function SaveSSHAddress(arg1) {
 
 export function SyncPiConfig(arg1) {
   return window['go']['main']['App']['SyncPiConfig'](arg1);
+}
+
+export function TestProviderConnectivity(arg1, arg2) {
+  return window['go']['main']['App']['TestProviderConnectivity'](arg1, arg2);
 }
 
 export function TestSSHConnection(arg1) {

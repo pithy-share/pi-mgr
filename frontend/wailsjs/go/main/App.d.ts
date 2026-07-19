@@ -36,11 +36,19 @@ export function LoadSSHAddress():Promise<string>;
 
 export function RemoveModel(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function RemoveModels(arg1:string,arg2:string,arg3:Array<string>):Promise<number>;
+
 export function RemoveProvider(arg1:string,arg2:string):Promise<void>;
+
+export function ReorderModels(arg1:string,arg2:string,arg3:Array<string>):Promise<void>;
+
+export function ReorderProviders(arg1:string,arg2:Array<string>):Promise<void>;
 
 export function SaveSSHAddress(arg1:string):Promise<void>;
 
 export function SyncPiConfig(arg1:string):Promise<main.SyncResult>;
+
+export function TestProviderConnectivity(arg1:string,arg2:string):Promise<string>;
 
 export function TestSSHConnection(arg1:string):Promise<main.SSHConnectionResult>;
 

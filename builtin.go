@@ -17,6 +17,19 @@ var BuiltInProviders = []BuiltInProvider{
 	{Key: "bedrock", Name: "Amazon Bedrock", APIType: "bedrock-converse-stream"},
 	{Key: "nvidia", Name: "NVIDIA NIM", APIType: "openai-completions"},
 	{Key: "huggingface", Name: "Hugging Face", APIType: "openai-completions"},
+	{Key: "ant-ling", Name: "Ant Ling", APIType: "openai-completions"},
+	{Key: "vercel-ai-gateway", Name: "Vercel AI Gateway", APIType: "openai-completions"},
+	{Key: "zai-coding-plan-global", Name: "ZAI Coding Plan (Global)", APIType: "openai-completions"},
+	{Key: "zai-coding-plan-china", Name: "ZAI Coding Plan (China)", APIType: "openai-completions"},
+	{Key: "opencode-zen", Name: "OpenCode Zen", APIType: "openai-completions"},
+	{Key: "opencode-go", Name: "OpenCode Go", APIType: "openai-completions"},
+	{Key: "kimi-for-coding", Name: "Kimi For Coding", APIType: "openai-completions"},
+	{Key: "minimax", Name: "MiniMax", APIType: "openai-completions"},
+	{Key: "minimax-china", Name: "MiniMax (China)", APIType: "openai-completions"},
+	{Key: "xiaomi-mimo", Name: "Xiaomi MiMo", APIType: "openai-completions"},
+	{Key: "xiaomi-mimo-china", Name: "Xiaomi MiMo Token Plan (China)", APIType: "openai-completions"},
+	{Key: "xiaomi-mimo-amsterdam", Name: "Xiaomi MiMo Token Plan (Amsterdam)", APIType: "openai-completions"},
+	{Key: "xiaomi-mimo-singapore", Name: "Xiaomi MiMo Token Plan (Singapore)", APIType: "openai-completions"},
 }
 
 // IsBuiltInProvider checks if a key is in the built-in provider catalog
