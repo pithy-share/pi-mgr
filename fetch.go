@@ -24,9 +24,18 @@ func (a *App) FetchProviderModels(providerKey string) ([]Model, error) {
 	}
 	prov := cfg.Providers[pidx]
 
-	baseURL := strings.TrimRight(prov.BaseURL, "/")
-	// Always use OpenAI-compatible /v1/models endpoint regardless of API type
-	url := baseURL + "/v1/models"
+	var url string
+	baseURL := strings.TrimSpace(prov.BaseURL)
+	if baseURL == "" && prov.BuiltIn {
+		modelURL := defaultModelListURL(prov.Key)
+		if modelURL == "" {
+			return nil, fmt.Errorf("该供应商没有默认 API 地址，请先配置 Base URL")
+		}
+		url = modelURL
+	} else {
+		baseURL = strings.TrimRight(baseURL, "/")
+		url = baseURL + "/v1/models"
+	}
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,

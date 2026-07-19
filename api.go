@@ -453,14 +453,23 @@ func (a *App) TestProviderConnectivity(providerKey string) (string, error) {
 	}
 	prov := cfg.Providers[pidx]
 
-	// All providers use OpenAI-compatible /v1/models for model listing,
-	// so connectivity testing works for every API type.
-	if strings.TrimSpace(prov.BaseURL) == "" {
-		return "", fmt.Errorf("请先配置 Base URL")
+		// For built-in providers with empty BaseURL, use the official default endpoint
+	baseURL := strings.TrimSpace(prov.BaseURL)
+	var url string
+	if baseURL == "" {
+		if prov.BuiltIn {
+			modelURL := defaultModelListURL(prov.Key)
+			if modelURL == "" {
+				return "", fmt.Errorf("该内置供应商暂不支持空 Base URL 测试，请手动配置")
+			}
+			url = modelURL
+		} else {
+			return "", fmt.Errorf("请先配置 Base URL")
+		}
+	} else {
+		baseURL = strings.TrimRight(baseURL, "/")
+		url = baseURL + "/v1/models"
 	}
-
-	baseURL := strings.TrimRight(prov.BaseURL, "/")
-	url := baseURL + "/v1/models"
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,

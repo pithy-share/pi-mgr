@@ -54,7 +54,7 @@ export function defaultModel(): Model {
   return {
     id: '',
     name: '',
-    reasoning: false,
+    reasoning: true,
     inputText: true,
     inputImage: false,
     contextWindow: 256000,

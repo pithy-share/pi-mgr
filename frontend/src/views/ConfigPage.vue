@@ -255,6 +255,7 @@
                 <strong>{{ model.id }}</strong>
                 <span v-if="model.name && model.name !== model.id" style="color:var(--text-secondary);margin-left:4px;font-size:13px;">{{ model.name }}</span>
                 <span style="font-size:11px;color:var(--text-secondary);margin-left:6px;">ctx:{{ model.contextWindow }}&nbsp;tok:{{ model.maxTokens }}</span>
+                <span v-if="model.reasoning" class="cap-badge reasoning">reasoning</span>
               </div>
               <div class="list-item-actions" style="flex-shrink:0;">
                 <button class="btn-secondary btn-small" @click="startEditModel(model)">编辑</button>
@@ -567,6 +568,8 @@ function toggleSelectAllFiltered() {
 const canFetchModels = computed(() => {
   const prov = selectedProvider.value
   if (!prov) return false
+  // Built-in providers can fetch models even without a custom Base URL (uses official endpoint)
+  if (prov.builtIn) return true
   if (!prov.baseUrl) return false
   return true
 })
@@ -574,13 +577,15 @@ const canFetchModels = computed(() => {
 const fetchButtonTitle = computed(() => {
   const prov = selectedProvider.value
   if (!prov) return '请先选择供应商'
-  if (!prov.baseUrl) return '请先配置 baseUrl'
+  if (!prov.builtIn && !prov.baseUrl) return '请先配置 baseUrl'
   return ''
 })
 
 const canTestConnectivity = computed(() => {
   const prov = selectedProvider.value
   if (!prov) return false
+  // Built-in providers can test even without a custom Base URL (uses official endpoint)
+  if (prov.builtIn) return true
   if (!provBaseURL.value.trim()) return false
   return true
 })
@@ -588,7 +593,7 @@ const canTestConnectivity = computed(() => {
 const connectivityTooltip = computed(() => {
   const prov = selectedProvider.value
   if (!prov) return ''
-  if (!provBaseURL.value.trim()) return '请先配置 Base URL'
+  if (!prov.builtIn && !provBaseURL.value.trim()) return '请先配置 Base URL'
   return ''
 })
 
@@ -1000,5 +1005,17 @@ async function handleImport() {
 .toggle-label {
   color: var(--text-secondary);
   min-width: 20px;
+}
+.cap-badge {
+  display:inline-block;
+  font-size:10px;
+  padding:1px 5px;
+  border-radius:3px;
+  margin-left:4px;
+  line-height:1.4;
+}
+.cap-badge.reasoning {
+  background:#e0f2fe;
+  color:#0369a1;
 }
 </style>
