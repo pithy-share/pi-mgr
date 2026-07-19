@@ -160,7 +160,7 @@
 
 ## 模型预设
 
-`frontend/src/presets.ts` 导出 `MODEL_PRESETS` 常量数组，包含 11 个常用模型的默认参数。预设仅在**添加模型**时可选（编辑模式不显示），选择后自动填充 id/name/reasoning/inputText/inputImage/contextWindow/maxTokens 字段，Cost 字段保持 0。预设为纯前端硬编码，无后端 API 调用。
+`frontend/src/presets.ts` 导出 `MODEL_PRESETS` 常量数组，包含 12 个常用模型的默认参数。预设仅在**添加模型**时可选（编辑模式不显示），选择后自动填充 id/name/reasoning/inputText/inputImage/contextWindow/maxTokens 字段，Cost 字段保持 0。预设为纯前端硬编码，无后端 API 调用。
 
 **重验条件**：模型参数随供应商更新变化时需手动同步。
 
