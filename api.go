@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -490,10 +491,28 @@ func (a *App) TestProviderConnectivity(providerKey string) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	bodyStr := strings.TrimSpace(string(bodyBytes))
+
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		return "连接成功，API 可达", nil
+		// Check if the response contains an error (auth failure disguised as 200)
+		var errResp struct {
+			Error any `json:"error"`
+		}
+		if bodyStr != "" && json.Unmarshal(bodyBytes, &errResp) == nil && errResp.Error != nil {
+			brief := bodyStr
+			if len(brief) > 160 {
+				brief = brief[:160] + "..."
+			}
+			return fmt.Sprintf("API Key 无效: %s", brief), nil
+		}
+		return "连接成功，Key 有效", nil
 	}
 
+	// 4xx/5xx — extract error message from body if available
+	if bodyStr != "" && len(bodyStr) < 300 {
+		return fmt.Sprintf("API 返回错误（状态码 %d）: %s", resp.StatusCode, bodyStr), nil
+	}
 	return fmt.Sprintf("API 返回错误（状态码 %d），请检查 API Key", resp.StatusCode), nil
 }
 
