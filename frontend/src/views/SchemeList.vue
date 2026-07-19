@@ -59,8 +59,7 @@
         <template v-else>
           <button class="btn-secondary btn-small" @click="startEdit(scheme)">编辑</button>
           <button class="btn-secondary btn-small" @click="handleDuplicate(scheme.id)">复制</button>
-          <button v-if="activeSchemeId !== scheme.id" class="btn-success btn-small" @click="handleActivate(scheme.id)">激活</button>
-          <button v-else class="btn-small" style="background:#d5f5e3;color:var(--success);cursor:default;" disabled>已激活</button>
+          <button class="btn-success btn-small" @click="handleActivate(scheme.id)">{{ activeSchemeId === scheme.id ? '重新激活' : '激活' }}</button>
           <button class="btn-danger btn-small" @click="confirmDelete = scheme.id">删除</button>
           <button class="btn-primary btn-small" @click="$router.push(`/scheme/${scheme.id}`)">配置</button>
         </template>
