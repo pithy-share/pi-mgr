@@ -54,6 +54,13 @@ export interface PiPackage {
   path: string      // 安装路径
 }
 
+export interface PromptTemplate {
+  name: string
+  description: string
+  argumentHint: string
+  installed: boolean
+}
+
 // Default model values per AC-17
 export function defaultModel(): Model {
   return {

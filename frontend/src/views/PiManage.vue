@@ -117,6 +117,74 @@
       </div>
     </div>
 
+    <!-- Built-in Prompt Templates -->
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h3>内置提示词</h3>
+        <div style="display:flex;gap:6px;">
+          <button class="btn-secondary btn-small" @click="loadPrompts" :disabled="isLoadingPrompts">
+            刷新
+          </button>
+          <button class="btn-primary btn-small" @click="handleInstallAllPrompts" :disabled="isInstallingPrompts || promptList.length === 0">
+            {{ isInstallingPrompts ? '安装中…' : '安装全部' }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="promptsError" style="color:var(--danger);margin-bottom:8px;font-size:13px;">{{ promptsError }}</div>
+
+      <div v-for="pt in promptList" :key="pt.name"
+        class="list-item" style="margin-bottom:2px;align-items:flex-start;cursor:pointer;"
+        @click="handleViewPrompt(pt.name)">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <code style="font-size:13px;font-weight:500;">/{{ pt.name }}</code>
+            <span v-if="pt.installed" class="active-badge" style="font-size:11px;">已安装</span>
+          </div>
+          <div v-if="pt.description" style="font-size:12px;color:var(--text-secondary);margin-top:2px;">
+            {{ pt.description }}
+          </div>
+          <div v-if="pt.argumentHint" style="font-size:11px;color:var(--text-secondary);margin-top:1px;opacity:0.8;">
+            参数: {{ pt.argumentHint }}
+          </div>
+        </div>
+        <div class="list-item-actions" style="flex-shrink:0;margin-left:8px;">
+          <button v-if="!pt.installed" class="btn-primary btn-small"
+            :disabled="installingPrompt === pt.name"
+            @click="handleInstallPrompt(pt.name)">
+            {{ installingPrompt === pt.name ? '安装中…' : '安装' }}
+          </button>
+          <button v-else class="btn-danger btn-small"
+            :disabled="removingPrompt === pt.name"
+            @click="handleRemovePrompt(pt.name)">
+            {{ removingPrompt === pt.name ? '删除中…' : '删除' }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="promptResult" style="margin-top:8px;padding:8px;background:#f5f5f5;border-radius:var(--radius);font-size:13px;">
+        {{ promptResult }}
+      </div>
+      <div v-else-if="promptList.length === 0 && !isLoadingPrompts && !promptsError" style="color:var(--text-secondary);padding:8px 0;font-size:13px;">
+        未加载到内置提示词
+      </div>
+    </div>
+
+    <!-- Prompt preview modal -->
+    <div v-if="previewPrompt" class="modal-overlay" @click.self="previewPrompt = ''">
+      <div class="modal" style="min-width:500px;max-width:700px;max-height:80vh;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h3 style="margin:0;">/<span style="font-family:monospace;">{{ previewPrompt }}</span></h3>
+          <button class="btn-secondary btn-small" @click="previewPrompt = ''">关闭</button>
+        </div>
+        <div style="flex:1;overflow-y:auto;background:#f8f9fa;border-radius:var(--radius);padding:16px;font-size:13px;font-family:monospace;white-space:pre-wrap;word-break:break-word;line-height:1.6;">
+          <div v-if="isLoadingContent" class="spinner" style="margin:20px auto;"></div>
+          <div v-else-if="previewError" style="color:var(--danger);">{{ previewError }}</div>
+          <template v-else>{{ previewContent }}</template>
+        </div>
+      </div>
+    </div>
+
     <!-- Delete confirmation modal -->
     <div v-if="confirmRemove" class="modal-overlay" @click.self="confirmRemove = ''">
       <div class="modal">
@@ -136,7 +204,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import api from '../wails/api'
-import type { PiPackage } from '../types'
+import type { PiPackage, PromptTemplate } from '../types'
 
 // Pi version
 const piVersion = ref('')
@@ -162,6 +230,95 @@ const recommendedPkgs = [
 ]
 const installingPkg = ref('')
 const installResult = ref('')
+
+// Prompt templates
+const promptList = ref<PromptTemplate[]>([])
+const isLoadingPrompts = ref(false)
+const promptsError = ref('')
+const installingPrompt = ref('')
+const isInstallingPrompts = ref(false)
+const removingPrompt = ref('')
+const promptResult = ref('')
+
+// Prompt preview
+const previewPrompt = ref('')
+const previewContent = ref('')
+const isLoadingContent = ref(false)
+const previewError = ref('')
+
+async function handleViewPrompt(name: string) {
+  previewPrompt.value = name
+  previewContent.value = ''
+  previewError.value = ''
+  isLoadingContent.value = true
+  try {
+    const a = api()
+    previewContent.value = await a.GetBuiltInPromptContent(name)
+  } catch (e: any) {
+    previewError.value = typeof e === 'string' ? e : (e?.message || '加载失败')
+  } finally {
+    isLoadingContent.value = false
+  }
+}
+
+async function loadPrompts() {
+  isLoadingPrompts.value = true
+  promptsError.value = ''
+  promptList.value = []
+  try {
+    const a = api()
+    promptList.value = await a.ListBuiltInPrompts()
+  } catch (e: any) {
+    promptsError.value = typeof e === 'string' ? e : (e?.message || '获取内置提示词失败')
+  } finally {
+    isLoadingPrompts.value = false
+  }
+}
+
+async function handleInstallPrompt(name: string) {
+  installingPrompt.value = name
+  promptResult.value = ''
+  try {
+    const a = api()
+    const count = await a.InstallBuiltInPrompts([name])
+    promptResult.value = `已安装 /${name}`
+    await loadPrompts()
+  } catch (e: any) {
+    promptResult.value = typeof e === 'string' ? e : (e?.message || `安装 /${name} 失败`)
+  } finally {
+    installingPrompt.value = ''
+  }
+}
+
+async function handleInstallAllPrompts() {
+  isInstallingPrompts.value = true
+  promptResult.value = ''
+  try {
+    const a = api()
+    const count = await a.InstallBuiltInPrompts([])
+    promptResult.value = `已安装 ${count} 个提示词`
+    await loadPrompts()
+  } catch (e: any) {
+    promptResult.value = typeof e === 'string' ? e : (e?.message || '安装提示词失败')
+  } finally {
+    isInstallingPrompts.value = false
+  }
+}
+
+async function handleRemovePrompt(name: string) {
+  removingPrompt.value = name
+  promptResult.value = ''
+  try {
+    const a = api()
+    await a.RemoveInstalledPrompt(name)
+    promptResult.value = `已删除 /${name}`
+    await loadPrompts()
+  } catch (e: any) {
+    promptResult.value = typeof e === 'string' ? e : (e?.message || `删除 /${name} 失败`)
+  } finally {
+    removingPrompt.value = ''
+  }
+}
 
 // CBM rules
 const loadingCbm = ref(false)
@@ -378,5 +535,6 @@ onMounted(() => {
   loadSSHAddress()
   loadVersion()
   loadPackages()
+  loadPrompts()
 })
 </script>

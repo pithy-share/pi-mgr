@@ -65,9 +65,15 @@ export interface AppAPI {
 
   // CBM
   GetCbmRules(): Promise<string>
+
+  // Built-in Prompt Templates
+  ListBuiltInPrompts(): Promise<PromptTemplate[]>
+  InstallBuiltInPrompts(names: string[]): Promise<number>
+  RemoveInstalledPrompt(name: string): Promise<void>
+  GetBuiltInPromptContent(name: string): Promise<string>
 }
 
-import type { Config, Provider, Model, BuiltInProvider, SyncResult } from '../types'
+import type { Config, Provider, Model, BuiltInProvider, SyncResult, PromptTemplate } from '../types'
 
 function api(): AppAPI {
   if (wails) return wails as unknown as AppAPI
@@ -111,6 +117,17 @@ function api(): AppAPI {
     InstallPiPackage: () => Promise.resolve('dev mode: install skipped'),
     InstallRemotePiPackage: () => Promise.resolve('dev mode: remote install skipped'),
     GetCbmRules: () => Promise.resolve('## cbm 使用规则\n\n开发模式示例内容'),
+
+    // Built-in Prompt Templates
+    ListBuiltInPrompts: () => Promise.resolve([
+      { name: 'implement', description: '按任务计划实现、验证并将结果保存到同一任务目录', argumentHint: '<task/<task-name>/plan.md>', installed: false },
+      { name: 'to_plan', description: '基于已落盘 PRD 生成计划并保存到同一任务目录', argumentHint: '<task/<task-name>/prd.md>', installed: false },
+      { name: 'to_prd', description: '生成 PRD 并保存到独立任务目录', argumentHint: '[简短摘要或需求文件]', installed: false },
+      { name: 'to_spec', description: '基于项目代码初始化或增量更新供 AI 编程使用的 AGENTS.md/spec 知识库', argumentHint: '[task/<task-name> 或范围]', installed: false },
+    ]),
+    InstallBuiltInPrompts: () => Promise.resolve(4),
+    RemoveInstalledPrompt: () => Promise.resolve(),
+    GetBuiltInPromptContent: () => Promise.resolve('# 开发模式\n\n示例内容'),
   }
 }
 
