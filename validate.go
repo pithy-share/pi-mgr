@@ -2,15 +2,6 @@ package main
 
 import "strings"
 
-// ValidateScheme checks scheme-level constraints. Returns nil if valid.
-func ValidateScheme(scheme *Scheme) []string {
-	var errs []string
-	if strings.TrimSpace(scheme.Name) == "" {
-		errs = append(errs, "方案名称不能为空")
-	}
-	return errs
-}
-
 // ValidateProvider checks provider-level constraints.
 // allProviders is the list of other providers in the scheme (excluding the one being validated).
 func ValidateProvider(prov *Provider, allProviders []Provider) []string {

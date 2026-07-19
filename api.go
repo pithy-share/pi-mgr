@@ -12,148 +12,18 @@ import (
 )
 
 // =============================================================================
-// Scheme CRUD
-// =============================================================================
-
-// ListSchemes returns all saved schemes
-func (a *App) ListSchemes() []Scheme {
-	schemes, err := LoadSchemes()
-	if err != nil {
-		return []Scheme{}
-	}
-	return schemes
-}
-
-// CreateScheme creates a new scheme with the given name
-func (a *App) CreateScheme(name string) (*Scheme, error) {
-	name = strings.TrimSpace(name)
-	scheme := &Scheme{
-		ID:        newUUID(),
-		Name:      name,
-		Providers: []Provider{},
-	}
-
-	if errs := ValidateScheme(scheme); len(errs) > 0 {
-		return nil, fmt.Errorf("%s", errs[0])
-	}
-
-	schemes, err := LoadSchemes()
-	if err != nil {
-		return nil, err
-	}
-	schemes = append(schemes, *scheme)
-	if err := SaveSchemes(schemes); err != nil {
-		return nil, err
-	}
-	return scheme, nil
-}
-
-// UpdateScheme updates a scheme's name
-func (a *App) UpdateScheme(scheme Scheme) error {
-	if errs := ValidateScheme(&scheme); len(errs) > 0 {
-		return fmt.Errorf("%s", errs[0])
-	}
-
-	schemes, err := LoadSchemes()
-	if err != nil {
-		return err
-	}
-	for i := range schemes {
-		if schemes[i].ID == scheme.ID {
-			schemes[i].Name = scheme.Name
-			return SaveSchemes(schemes)
-		}
-	}
-	return fmt.Errorf("scheme not found: %s", scheme.ID)
-}
-
-// DeleteScheme removes a scheme by ID, and clears active state if this scheme was active
-func (a *App) DeleteScheme(id string) error {
-	schemes, err := LoadSchemes()
-	if err != nil {
-		return err
-	}
-	for i := range schemes {
-		if schemes[i].ID == id {
-			schemes = append(schemes[:i], schemes[i+1:]...)
-			if activeID, _ := GetActiveSchemeID(); activeID == id {
-				ClearActiveSchemeID()
-			}
-			return SaveSchemes(schemes)
-		}
-	}
-	return fmt.Errorf("scheme not found: %s", id)
-}
-
-// DuplicateScheme creates a copy of a scheme with " - 副本" suffix
-func (a *App) DuplicateScheme(id string) (*Scheme, error) {
-	schemes, err := LoadSchemes()
-	if err != nil {
-		return nil, err
-	}
-	for i := range schemes {
-		if schemes[i].ID == id {
-			newScheme := schemes[i]
-			newScheme.ID = newUUID()
-			newScheme.Name = newScheme.Name + " - 副本"
-			// Deep copy providers
-			newScheme.Providers = make([]Provider, len(schemes[i].Providers))
-			copy(newScheme.Providers, schemes[i].Providers)
-			for j := range newScheme.Providers {
-				newScheme.Providers[j].Models = make([]Model, len(schemes[i].Providers[j].Models))
-				copy(newScheme.Providers[j].Models, schemes[i].Providers[j].Models)
-			}
-
-			schemes = append(schemes, newScheme)
-			if err := SaveSchemes(schemes); err != nil {
-				return nil, err
-			}
-			return &newScheme, nil
-		}
-	}
-	return nil, fmt.Errorf("scheme not found: %s", id)
-}
-
-// ActivateScheme writes the scheme to pi's models.json and records it as active
-func (a *App) ActivateScheme(id string) error {
-	scheme, err := GetScheme(id)
-	if err != nil {
-		return err
-	}
-	if err := ActivateScheme(scheme); err != nil {
-		return err
-	}
-	return SaveActiveSchemeID(id)
-}
-
-// GetActiveSchemeID returns the ID of the last activated scheme, or empty string if none
-func (a *App) GetActiveSchemeID() string {
-	id, err := GetActiveSchemeID()
-	if err != nil {
-		return ""
-	}
-	return id
-}
-
-// =============================================================================
 // Provider management
 // =============================================================================
 
-// AddBuiltInProvider adds a built-in provider to a scheme
-func (a *App) AddBuiltInProvider(schemeID, providerKey, apiKey, baseURL string) error {
-	schemes, err := LoadSchemes()
+// AddBuiltInProvider adds a built-in provider to the config
+func (a *App) AddBuiltInProvider(providerKey, apiKey, baseURL string) error {
+	cfg, err := LoadConfig()
 	if err != nil {
 		return err
 	}
-	idx := findSchemeIndex(schemes, schemeID)
-	if idx < 0 {
-		return fmt.Errorf("scheme not found: %s", schemeID)
-	}
 
-	scheme := &schemes[idx]
-
-	// Check if provider key already exists in this scheme (AC-33)
-	for _, p := range scheme.Providers {
+	// Check if provider key already exists
+	for _, p := range cfg.Providers {
 		if p.Key == providerKey {
 			return fmt.Errorf("该内置供应商已添加")
 		}
@@ -175,162 +45,170 @@ func (a *App) AddBuiltInProvider(schemeID, providerKey, apiKey, baseURL string) 
 		Key:     providerKey,
 		Name:    displayName,
 		BuiltIn: true,
+		Enabled: true,
 		APIKey:  strings.TrimSpace(apiKey),
 		BaseURL: strings.TrimSpace(baseURL),
 		Models:  []Model{},
 	}
 
-	// Validate
-	if errs := ValidateProvider(&prov, scheme.Providers); len(errs) > 0 {
+	if errs := ValidateProvider(&prov, cfg.Providers); len(errs) > 0 {
 		return fmt.Errorf("%s", errs[0])
 	}
 
-	scheme.Providers = append(scheme.Providers, prov)
-	return SaveSchemes(schemes)
+	cfg.Providers = append(cfg.Providers, prov)
+	if err := SaveConfig(cfg); err != nil {
+		return err
+	}
+	return syncModelsJSON(cfg)
 }
 
-// AddCustomProvider adds a custom provider to a scheme
-func (a *App) AddCustomProvider(schemeID, key, baseURL, apiType, apiKey string) error {
-	schemes, err := LoadSchemes()
+// AddCustomProvider adds a custom provider to the config
+func (a *App) AddCustomProvider(key, baseURL, apiType, apiKey string) error {
+	cfg, err := LoadConfig()
 	if err != nil {
 		return err
 	}
-	idx := findSchemeIndex(schemes, schemeID)
-	if idx < 0 {
-		return fmt.Errorf("scheme not found: %s", schemeID)
-	}
-
-	scheme := &schemes[idx]
 
 	prov := Provider{
 		Key:     strings.TrimSpace(key),
 		Name:    strings.TrimSpace(key),
 		BuiltIn: false,
+		Enabled: true,
 		APIKey:  strings.TrimSpace(apiKey),
 		BaseURL: strings.TrimSpace(baseURL),
 		APIType: apiType,
 		Models:  []Model{},
 	}
 
-	if errs := ValidateProvider(&prov, scheme.Providers); len(errs) > 0 {
+	if errs := ValidateProvider(&prov, cfg.Providers); len(errs) > 0 {
 		return fmt.Errorf("%s", errs[0])
 	}
 
-	scheme.Providers = append(scheme.Providers, prov)
-	return SaveSchemes(schemes)
+	cfg.Providers = append(cfg.Providers, prov)
+	if err := SaveConfig(cfg); err != nil {
+		return err
+	}
+	return syncModelsJSON(cfg)
 }
 
 // UpdateProvider updates an existing provider's configuration
-func (a *App) UpdateProvider(schemeID string, provider Provider) error {
-	schemes, err := LoadSchemes()
+func (a *App) UpdateProvider(provider Provider) error {
+	cfg, err := LoadConfig()
 	if err != nil {
 		return err
 	}
-	idx := findSchemeIndex(schemes, schemeID)
-	if idx < 0 {
-		return fmt.Errorf("scheme not found: %s", schemeID)
-	}
 
-	scheme := &schemes[idx]
-	pidx := findProviderIndex(scheme, provider.Key)
+	pidx := findProviderIndex(cfg, provider.Key)
 	if pidx < 0 {
 		return fmt.Errorf("provider not found: %s", provider.Key)
 	}
 
 	// Build list of other providers (excluding self) for uniqueness check
-	others := make([]Provider, 0, len(scheme.Providers)-1)
-	for i, p := range scheme.Providers {
+	others := make([]Provider, 0, len(cfg.Providers)-1)
+	for i, p := range cfg.Providers {
 		if i != pidx {
 			others = append(others, p)
 		}
 	}
 
 	// Preserve models that might not be sent from frontend
-	scheme.Providers[pidx].APIKey = provider.APIKey
-	scheme.Providers[pidx].BaseURL = provider.BaseURL
+	cfg.Providers[pidx].APIKey = provider.APIKey
+	cfg.Providers[pidx].BaseURL = provider.BaseURL
 	if !provider.BuiltIn {
-		scheme.Providers[pidx].APIType = provider.APIType
+		cfg.Providers[pidx].APIType = provider.APIType
 	}
 
-	// Validate with others
-	updated := scheme.Providers[pidx]
+	updated := cfg.Providers[pidx]
 	if errs := ValidateProvider(&updated, others); len(errs) > 0 {
 		return fmt.Errorf("%s", errs[0])
 	}
 
-	return SaveSchemes(schemes)
+	if err := SaveConfig(cfg); err != nil {
+		return err
+	}
+	return syncModelsJSON(cfg)
 }
 
-// RemoveProvider removes a provider from a scheme
-func (a *App) RemoveProvider(schemeID, providerKey string) error {
-	schemes, err := LoadSchemes()
+// SetProviderEnabled enables or disables a provider and syncs models.json immediately
+func (a *App) SetProviderEnabled(providerKey string, enabled bool) error {
+	cfg, err := LoadConfig()
 	if err != nil {
 		return err
 	}
-	idx := findSchemeIndex(schemes, schemeID)
-	if idx < 0 {
-		return fmt.Errorf("scheme not found: %s", schemeID)
-	}
 
-	scheme := &schemes[idx]
-	pidx := findProviderIndex(scheme, providerKey)
+	pidx := findProviderIndex(cfg, providerKey)
 	if pidx < 0 {
 		return fmt.Errorf("provider not found: %s", providerKey)
 	}
 
-	scheme.Providers = append(scheme.Providers[:pidx], scheme.Providers[pidx+1:]...)
-	return SaveSchemes(schemes)
+	cfg.Providers[pidx].Enabled = enabled
+	if err := SaveConfig(cfg); err != nil {
+		return err
+	}
+	return syncModelsJSON(cfg)
+}
+
+// RemoveProvider removes a provider from the config
+func (a *App) RemoveProvider(providerKey string) error {
+	cfg, err := LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	pidx := findProviderIndex(cfg, providerKey)
+	if pidx < 0 {
+		return fmt.Errorf("provider not found: %s", providerKey)
+	}
+
+	cfg.Providers = append(cfg.Providers[:pidx], cfg.Providers[pidx+1:]...)
+	if err := SaveConfig(cfg); err != nil {
+		return err
+	}
+	return syncModelsJSON(cfg)
 }
 
 // =============================================================================
 // Model management
 // =============================================================================
 
-// AddModel adds a model to a provider within a scheme
-func (a *App) AddModel(schemeID, providerKey string, model Model) error {
-	schemes, err := LoadSchemes()
+// AddModel adds a model to a provider
+func (a *App) AddModel(providerKey string, model Model) error {
+	cfg, err := LoadConfig()
 	if err != nil {
 		return err
 	}
-	idx := findSchemeIndex(schemes, schemeID)
-	if idx < 0 {
-		return fmt.Errorf("scheme not found: %s", schemeID)
-	}
 
-	scheme := &schemes[idx]
-	pidx := findProviderIndex(scheme, providerKey)
+	pidx := findProviderIndex(cfg, providerKey)
 	if pidx < 0 {
 		return fmt.Errorf("provider not found: %s", providerKey)
 	}
 
-	prov := &scheme.Providers[pidx]
+	prov := &cfg.Providers[pidx]
 
 	if errs := ValidateModel(&model, prov.Models); len(errs) > 0 {
 		return fmt.Errorf("%s", errs[0])
 	}
 
 	prov.Models = append(prov.Models, model)
-	return SaveSchemes(schemes)
+	if err := SaveConfig(cfg); err != nil {
+		return err
+	}
+	return syncModelsJSON(cfg)
 }
 
 // UpdateModel updates an existing model in a provider
-func (a *App) UpdateModel(schemeID, providerKey string, model Model) error {
-	schemes, err := LoadSchemes()
+func (a *App) UpdateModel(providerKey string, model Model) error {
+	cfg, err := LoadConfig()
 	if err != nil {
 		return err
 	}
-	idx := findSchemeIndex(schemes, schemeID)
-	if idx < 0 {
-		return fmt.Errorf("scheme not found: %s", schemeID)
-	}
 
-	scheme := &schemes[idx]
-	pidx := findProviderIndex(scheme, providerKey)
+	pidx := findProviderIndex(cfg, providerKey)
 	if pidx < 0 {
 		return fmt.Errorf("provider not found: %s", providerKey)
 	}
 
-	prov := &scheme.Providers[pidx]
+	prov := &cfg.Providers[pidx]
 	midx := findModelIndex(prov, model.ID)
 	if midx < 0 {
 		return fmt.Errorf("model not found: %s", model.ID)
@@ -349,57 +227,53 @@ func (a *App) UpdateModel(schemeID, providerKey string, model Model) error {
 	}
 
 	prov.Models[midx] = model
-	return SaveSchemes(schemes)
+	if err := SaveConfig(cfg); err != nil {
+		return err
+	}
+	return syncModelsJSON(cfg)
 }
 
 // RemoveModel removes a model from a provider
-func (a *App) RemoveModel(schemeID, providerKey, modelID string) error {
-	schemes, err := LoadSchemes()
+func (a *App) RemoveModel(providerKey, modelID string) error {
+	cfg, err := LoadConfig()
 	if err != nil {
 		return err
 	}
-	idx := findSchemeIndex(schemes, schemeID)
-	if idx < 0 {
-		return fmt.Errorf("scheme not found: %s", schemeID)
-	}
 
-	scheme := &schemes[idx]
-	pidx := findProviderIndex(scheme, providerKey)
+	pidx := findProviderIndex(cfg, providerKey)
 	if pidx < 0 {
 		return fmt.Errorf("provider not found: %s", providerKey)
 	}
 
-	prov := &scheme.Providers[pidx]
+	prov := &cfg.Providers[pidx]
 	midx := findModelIndex(prov, modelID)
 	if midx < 0 {
 		return fmt.Errorf("model not found: %s", modelID)
 	}
 
 	prov.Models = append(prov.Models[:midx], prov.Models[midx+1:]...)
-	return SaveSchemes(schemes)
+	if err := SaveConfig(cfg); err != nil {
+		return err
+	}
+	return syncModelsJSON(cfg)
 }
 
 // ImportProviderModels bulk-imports models into a provider, skipping duplicates by ID.
 // Returns the number of models actually added (0 if all were skipped).
-func (a *App) ImportProviderModels(schemeID, providerKey string, models []Model) (int, error) {
-	schemes, err := LoadSchemes()
+func (a *App) ImportProviderModels(providerKey string, models []Model) (int, error) {
+	cfg, err := LoadConfig()
 	if err != nil {
 		return 0, err
 	}
-	idx := findSchemeIndex(schemes, schemeID)
-	if idx < 0 {
-		return 0, fmt.Errorf("scheme not found: %s", schemeID)
-	}
 
-	scheme := &schemes[idx]
-	pidx := findProviderIndex(scheme, providerKey)
+	pidx := findProviderIndex(cfg, providerKey)
 	if pidx < 0 {
 		return 0, fmt.Errorf("provider not found: %s", providerKey)
 	}
 
-	prov := &scheme.Providers[pidx]
+	prov := &cfg.Providers[pidx]
 
-	// Build existing ID set for O(1) duplicate check (AC-10)
+	// Build existing ID set for O(1) duplicate check
 	existing := make(map[string]bool, len(prov.Models))
 	for _, m := range prov.Models {
 		existing[m.ID] = true
@@ -415,12 +289,14 @@ func (a *App) ImportProviderModels(schemeID, providerKey string, models []Model)
 		added++
 	}
 
-	// AC-11: no error when all skipped — just return 0
 	if added == 0 {
 		return 0, nil
 	}
 
-	if err := SaveSchemes(schemes); err != nil {
+	if err := SaveConfig(cfg); err != nil {
+		return 0, err
+	}
+	if err := syncModelsJSON(cfg); err != nil {
 		return 0, err
 	}
 	return added, nil
@@ -432,24 +308,18 @@ func (a *App) ImportProviderModels(schemeID, providerKey string, models []Model)
 
 // RemoveModels removes multiple models from a provider. Best-effort: skips
 // models that don't exist, returns count of successfully removed models.
-// Returns (0, nil) when no models were removed (all skipped or not found).
-func (a *App) RemoveModels(schemeID string, providerKey string, modelIDs []string) (int, error) {
-	schemes, err := LoadSchemes()
+func (a *App) RemoveModels(providerKey string, modelIDs []string) (int, error) {
+	cfg, err := LoadConfig()
 	if err != nil {
 		return 0, err
 	}
-	idx := findSchemeIndex(schemes, schemeID)
-	if idx < 0 {
-		return 0, fmt.Errorf("scheme not found: %s", schemeID)
-	}
 
-	scheme := &schemes[idx]
-	pidx := findProviderIndex(scheme, providerKey)
+	pidx := findProviderIndex(cfg, providerKey)
 	if pidx < 0 {
 		return 0, fmt.Errorf("provider not found: %s", providerKey)
 	}
 
-	prov := &scheme.Providers[pidx]
+	prov := &cfg.Providers[pidx]
 
 	// Build set for O(1) lookup
 	toRemove := make(map[string]bool, len(modelIDs))
@@ -471,39 +341,36 @@ func (a *App) RemoveModels(schemeID string, providerKey string, modelIDs []strin
 	}
 
 	prov.Models = kept
-	if err := SaveSchemes(schemes); err != nil {
+	if err := SaveConfig(cfg); err != nil {
+		return 0, err
+	}
+	if err := syncModelsJSON(cfg); err != nil {
 		return 0, err
 	}
 	return removed, nil
 }
 
-// ReorderProviders reorders providers in a scheme by the given key order.
-func (a *App) ReorderProviders(schemeID string, orderedKeys []string) error {
-	schemes, err := LoadSchemes()
+// ReorderProviders reorders providers in the config by the given key order.
+func (a *App) ReorderProviders(orderedKeys []string) error {
+	cfg, err := LoadConfig()
 	if err != nil {
 		return err
 	}
-	idx := findSchemeIndex(schemes, schemeID)
-	if idx < 0 {
-		return fmt.Errorf("scheme not found: %s", schemeID)
-	}
-
-	scheme := &schemes[idx]
 
 	// Validate: orderedKeys must match existing provider keys exactly
-	if len(orderedKeys) != len(scheme.Providers) {
+	if len(orderedKeys) != len(cfg.Providers) {
 		return fmt.Errorf("供应商列表不一致")
 	}
 
 	// Build index map for reordering
-	indexByKey := make(map[string]int, len(scheme.Providers))
-	for i, p := range scheme.Providers {
+	indexByKey := make(map[string]int, len(cfg.Providers))
+	for i, p := range cfg.Providers {
 		indexByKey[p.Key] = i
 	}
 
-	// Check every ordered key exists, and check for duplicates in orderedKeys
+	// Check every ordered key exists, and check for duplicates
 	seen := make(map[string]bool, len(orderedKeys))
-	reordered := make([]Provider, 0, len(scheme.Providers))
+	reordered := make([]Provider, 0, len(cfg.Providers))
 	for _, key := range orderedKeys {
 		pos, ok := indexByKey[key]
 		if !ok {
@@ -513,31 +380,29 @@ func (a *App) ReorderProviders(schemeID string, orderedKeys []string) error {
 			return fmt.Errorf("供应商列表不一致")
 		}
 		seen[key] = true
-		reordered = append(reordered, scheme.Providers[pos])
+		reordered = append(reordered, cfg.Providers[pos])
 	}
 
-	scheme.Providers = reordered
-	return SaveSchemes(schemes)
+	cfg.Providers = reordered
+	if err := SaveConfig(cfg); err != nil {
+		return err
+	}
+	return syncModelsJSON(cfg)
 }
 
-// ReorderModels reorders models in a provider within a scheme.
-func (a *App) ReorderModels(schemeID string, providerKey string, orderedIDs []string) error {
-	schemes, err := LoadSchemes()
+// ReorderModels reorders models in a provider.
+func (a *App) ReorderModels(providerKey string, orderedIDs []string) error {
+	cfg, err := LoadConfig()
 	if err != nil {
 		return err
 	}
-	idx := findSchemeIndex(schemes, schemeID)
-	if idx < 0 {
-		return fmt.Errorf("scheme not found: %s", schemeID)
-	}
 
-	scheme := &schemes[idx]
-	pidx := findProviderIndex(scheme, providerKey)
+	pidx := findProviderIndex(cfg, providerKey)
 	if pidx < 0 {
 		return fmt.Errorf("provider not found: %s", providerKey)
 	}
 
-	prov := &scheme.Providers[pidx]
+	prov := &cfg.Providers[pidx]
 
 	// Validate: orderedIDs must match existing model IDs exactly
 	if len(orderedIDs) != len(prov.Models) {
@@ -550,7 +415,6 @@ func (a *App) ReorderModels(schemeID string, providerKey string, orderedIDs []st
 		indexByID[m.ID] = i
 	}
 
-	// Check every ordered ID exists, and check for duplicates
 	seen := make(map[string]bool, len(orderedIDs))
 	reordered := make([]Model, 0, len(prov.Models))
 	for _, id := range orderedIDs {
@@ -566,7 +430,10 @@ func (a *App) ReorderModels(schemeID string, providerKey string, orderedIDs []st
 	}
 
 	prov.Models = reordered
-	return SaveSchemes(schemes)
+	if err := SaveConfig(cfg); err != nil {
+		return err
+	}
+	return syncModelsJSON(cfg)
 }
 
 // =============================================================================
@@ -574,43 +441,26 @@ func (a *App) ReorderModels(schemeID string, providerKey string, orderedIDs []st
 // =============================================================================
 
 // TestProviderConnectivity tests connectivity to a provider's API endpoint.
-// Returns a Chinese status message. Does not persist any data.
-func (a *App) TestProviderConnectivity(schemeID string, providerKey string) (string, error) {
-	scheme, err := GetScheme(schemeID)
+func (a *App) TestProviderConnectivity(providerKey string) (string, error) {
+	cfg, err := LoadConfig()
 	if err != nil {
 		return "", err
 	}
 
-	pidx := findProviderIndex(scheme, providerKey)
+	pidx := findProviderIndex(cfg, providerKey)
 	if pidx < 0 {
 		return "", fmt.Errorf("provider not found: %s", providerKey)
 	}
-	prov := scheme.Providers[pidx]
+	prov := cfg.Providers[pidx]
 
-	// Only openai-compat types are supported
-	apiType := prov.APIType
-	if prov.BuiltIn {
-		for _, b := range BuiltInProviders {
-			if b.Key == prov.Key {
-				apiType = b.APIType
-				break
-			}
-		}
-	}
-	switch apiType {
-	case "openai-completions", "openai-responses", "azure-openai-responses":
-		// supported
-	default:
-		return "", fmt.Errorf("该 API 类型暂不支持连通性测试")
-	}
-
-	// baseUrl required
+	// All providers use OpenAI-compatible /v1/models for model listing,
+	// so connectivity testing works for every API type.
 	if strings.TrimSpace(prov.BaseURL) == "" {
 		return "", fmt.Errorf("请先配置 Base URL")
 	}
 
 	baseURL := strings.TrimRight(prov.BaseURL, "/")
-	url := baseURL + "/models"
+	url := baseURL + "/v1/models"
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,
@@ -642,11 +492,11 @@ func (a *App) TestProviderConnectivity(schemeID string, providerKey string) (str
 // Export / Import
 // =============================================================================
 
-// ExportSchemes exports all schemes to a user-chosen file (AC-01)
-func (a *App) ExportSchemes() error {
+// ExportConfig exports the current config to a user-chosen file
+func (a *App) ExportConfig() error {
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: "pi-mgr-schemes.json",
-		Title:           "导出配置方案",
+		DefaultFilename: "pi-mgr-config.json",
+		Title:           "导出配置",
 		Filters: []runtime.FileFilter{{
 			DisplayName: "JSON 文件 (*.json)",
 			Pattern:     "*.json",
@@ -656,27 +506,24 @@ func (a *App) ExportSchemes() error {
 		return fmt.Errorf("打开保存对话框失败: %w", err)
 	}
 	if path == "" {
-		// User cancelled
-		return nil
+		return nil // user cancelled
 	}
 
-	schemes, err := LoadSchemes()
+	cfg, err := LoadConfig()
 	if err != nil {
-		return fmt.Errorf("读取方案失败: %w", err)
+		return fmt.Errorf("读取配置失败: %w", err)
 	}
 
-	data, err := json.MarshalIndent(schemes, "", "  ")
+	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
-		return fmt.Errorf("序列化方案失败: %w", err)
+		return fmt.Errorf("序列化配置失败: %w", err)
 	}
 
-	// Atomic write: temp + rename, fallback to direct write (same pattern as SaveSchemes)
 	tmpPath := path + ".tmp"
 	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
 		return fmt.Errorf("写入导出文件失败: %w", err)
 	}
 	if err := os.Rename(tmpPath, path); err != nil {
-		// Rename may fail across volumes; fallback to direct write
 		if err2 := os.WriteFile(path, data, 0644); err2 != nil {
 			os.Remove(tmpPath)
 			return fmt.Errorf("保存导出文件失败: %w", err2)
@@ -687,10 +534,10 @@ func (a *App) ExportSchemes() error {
 	return nil
 }
 
-// ImportSchemes imports schemes from a user-chosen JSON file (AC-04, AC-05, AC-06, AC-07, AC-09, AC-10)
-func (a *App) ImportSchemes() error {
+// ImportConfig imports a config from a user-chosen JSON file, replacing the current config
+func (a *App) ImportConfig() error {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "导入配置方案",
+		Title: "导入配置",
 		Filters: []runtime.FileFilter{{
 			DisplayName: "JSON 文件 (*.json)",
 			Pattern:     "*.json",
@@ -700,8 +547,7 @@ func (a *App) ImportSchemes() error {
 		return fmt.Errorf("打开文件对话框失败: %w", err)
 	}
 	if path == "" {
-		// User cancelled
-		return nil
+		return nil // user cancelled
 	}
 
 	data, err := os.ReadFile(path)
@@ -709,115 +555,114 @@ func (a *App) ImportSchemes() error {
 		return fmt.Errorf("读取文件失败: %w", err)
 	}
 
-	// Trim whitespace for empty/whitespace-only detection
 	trimmed := strings.TrimSpace(string(data))
 	if trimmed == "" || trimmed == "[]" {
-		// Empty array → no-op (AC-09)
-		return nil
+		return nil // empty → no-op
 	}
 
-	// Parse as raw message to determine top-level type (AC-04: object or array)
 	var raw json.RawMessage
 	if err := json.Unmarshal([]byte(trimmed), &raw); err != nil {
 		return fmt.Errorf("JSON 格式错误: %w", err)
 	}
 
-	var imported []Scheme
+	var imported Config
+
 	if len(raw) > 0 && raw[0] == '{' {
-		// Single Scheme object → wrap in array
-		var single Scheme
-		if err := json.Unmarshal(raw, &single); err != nil {
-			return fmt.Errorf("JSON 格式错误: %w", err)
-		}
-		imported = []Scheme{single}
-	} else if len(raw) > 0 && raw[0] == '[' {
-		// Array of schemes
+		// Try parsing as Config directly
 		if err := json.Unmarshal(raw, &imported); err != nil {
 			return fmt.Errorf("JSON 格式错误: %w", err)
 		}
+		// If parsed as Config but looks like a legacy Scheme (has "id" field), extract providers
+		if imported.Providers == nil {
+			// Try legacy: parse as Scheme and extract providers
+			var legacy struct {
+				ID        string     `json:"id"`
+				Name      string     `json:"name"`
+				Providers []Provider `json:"providers"`
+			}
+			if err := json.Unmarshal(raw, &legacy); err != nil {
+				return fmt.Errorf("JSON 格式错误: %w", err)
+			}
+			if legacy.Providers != nil {
+				imported.Providers = legacy.Providers
+			}
+		}
+	} else if len(raw) > 0 && raw[0] == '[' {
+		// Legacy: array of schemes → take first scheme's providers
+		var schemes []struct {
+			ID        string     `json:"id"`
+			Name      string     `json:"name"`
+			Providers []Provider `json:"providers"`
+		}
+		if err := json.Unmarshal(raw, &schemes); err != nil {
+			return fmt.Errorf("JSON 格式错误: %w", err)
+		}
+		if len(schemes) > 0 {
+			imported.Providers = schemes[0].Providers
+		}
 	} else {
-		// Not an object or array (AC-10: non-object)
 		return fmt.Errorf("JSON 格式错误: 文件根层级应为对象或数组")
 	}
 
-	// Check each scheme has an ID (AC-10)
-	for i := range imported {
-		if strings.TrimSpace(imported[i].ID) == "" {
-			return fmt.Errorf("导入的方案缺少 id 字段")
+	if len(imported.Providers) == 0 {
+		// Import empty providers → overwrite with empty config
+		if err := SaveConfig(&Config{}); err != nil {
+			return fmt.Errorf("保存配置失败: %w", err)
+		}
+		return syncModelsJSON(&Config{})
+	}
+
+	// Downgrade unknown builtIn providers
+	for pi := range imported.Providers {
+		prov := &imported.Providers[pi]
+		if prov.BuiltIn && !IsBuiltInProvider(prov.Key) {
+			prov.BuiltIn = false
 		}
 	}
 
-	// Downgrade unknown builtIn providers (AC-06)
-	for si := range imported {
-		for pi := range imported[si].Providers {
-			prov := &imported[si].Providers[pi]
-			if prov.BuiltIn && !IsBuiltInProvider(prov.Key) {
-				prov.BuiltIn = false
+	// Full validation
+	for pi := range imported.Providers {
+		prov := &imported.Providers[pi]
+		others := make([]Provider, 0, len(imported.Providers)-1)
+		for qi, other := range imported.Providers {
+			if qi != pi {
+				others = append(others, other)
+			}
+		}
+		if errs := ValidateProvider(prov, others); len(errs) > 0 {
+			return fmt.Errorf("供应商 \"%s\" 校验失败: %s", prov.Key, errs[0])
+		}
+		for mi := range prov.Models {
+			model := &prov.Models[mi]
+			omodels := make([]Model, 0, len(prov.Models)-1)
+			for ni, other := range prov.Models {
+				if ni != mi {
+					omodels = append(omodels, other)
+				}
+			}
+			if errs := ValidateModel(model, omodels); len(errs) > 0 {
+				return fmt.Errorf("供应商 \"%s\" 模型 \"%s\" 校验失败: %s", prov.Key, model.ID, errs[0])
 			}
 		}
 	}
 
-	// Merge with existing schemes (AC-05)
-	existing, err := LoadSchemes()
+	if err := SaveConfig(&imported); err != nil {
+		return fmt.Errorf("保存配置失败: %w", err)
+	}
+	return syncModelsJSON(&imported)
+}
+
+// =============================================================================
+// Config query
+// =============================================================================
+
+// GetConfig returns the current config
+func (a *App) GetConfig() *Config {
+	cfg, err := LoadConfig()
 	if err != nil {
-		return fmt.Errorf("读取现有方案失败: %w", err)
+		return &Config{}
 	}
-
-	merged := make([]Scheme, 0, len(existing)+len(imported))
-	covered := make(map[string]bool, len(imported))
-	for _, imp := range imported {
-		covered[imp.ID] = true
-	}
-
-	// Add existing schemes not being overwritten
-	for _, ex := range existing {
-		if !covered[ex.ID] {
-			merged = append(merged, ex)
-		}
-	}
-	// Add all imported schemes (new or overwrite)
-	merged = append(merged, imported...)
-
-	// Full validation before save (AC-07)
-	for si := range merged {
-		scheme := &merged[si]
-		if errs := ValidateScheme(scheme); len(errs) > 0 {
-			return fmt.Errorf("方案 \"%s\" 校验失败: %s", scheme.Name, errs[0])
-		}
-		for pi := range scheme.Providers {
-			prov := &scheme.Providers[pi]
-			// Build list of other providers in this scheme (excluding self) for uniqueness check
-			others := make([]Provider, 0, len(scheme.Providers)-1)
-			for qi, other := range scheme.Providers {
-				if qi != pi {
-					others = append(others, other)
-				}
-			}
-			if errs := ValidateProvider(prov, others); len(errs) > 0 {
-				return fmt.Errorf("方案 \"%s\" 供应商 \"%s\" 校验失败: %s", scheme.Name, prov.Key, errs[0])
-			}
-			for mi := range prov.Models {
-				model := &prov.Models[mi]
-				// Build list of other models in this provider (excluding self) for uniqueness check
-				omodels := make([]Model, 0, len(prov.Models)-1)
-				for ni, other := range prov.Models {
-					if ni != mi {
-						omodels = append(omodels, other)
-					}
-				}
-				if errs := ValidateModel(model, omodels); len(errs) > 0 {
-					return fmt.Errorf("方案 \"%s\" 供应商 \"%s\" 模型 \"%s\" 校验失败: %s", scheme.Name, prov.Key, model.ID, errs[0])
-				}
-			}
-		}
-	}
-
-	// Save (AC-07: only called after all validation passes)
-	if err := SaveSchemes(merged); err != nil {
-		return fmt.Errorf("保存方案失败: %w", err)
-	}
-
-	return nil
+	return cfg
 }
 
 // =============================================================================
@@ -837,24 +682,6 @@ func (a *App) ListAPITypes() []string {
 // =============================================================================
 // Helpers
 // =============================================================================
-
-func findSchemeIndex(schemes []Scheme, id string) int {
-	for i := range schemes {
-		if schemes[i].ID == id {
-			return i
-		}
-	}
-	return -1
-}
-
-func findProviderIndex(scheme *Scheme, key string) int {
-	for i := range scheme.Providers {
-		if scheme.Providers[i].Key == key {
-			return i
-		}
-	}
-	return -1
-}
 
 func findModelIndex(prov *Provider, id string) int {
 	for i := range prov.Models {

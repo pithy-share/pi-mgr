@@ -79,10 +79,10 @@
 
 | 方法 | 输入 | 输出 | 副作用 |
 |---|---|---|---|
-| `TestProviderConnectivity(schemeID, providerKey)` | 方案 ID、provider key | `(string, error)` | **无持久化**；HTTP GET `{baseURL}/models`，Bearer 认证（空 key 不发），10s 超时 |
+| `TestProviderConnectivity(schemeID, providerKey)` | 方案 ID、provider key | `(string, error)` | **无持久化**；HTTP GET `{baseURL}/v1/models`，Bearer 认证（空 key 不发），10s 超时 |
 
 **连通性测试契约**：
-- 仅支持 `openai-completions`、`openai-responses`、`azure-openai-responses` 三种 API 类型，其他类型返回 `"该 API 类型暂不支持连通性测试"`
+- 所有 API 类型均使用 OpenAI 兼容的 `/v1/models` 端点，无需区分 API 类型
 - BaseURL 为空时返回 `"请先配置 Base URL"`
 - 2xx 响应 → `"连接成功，API 可达"`
 - 网络错误 → `"无法连接，请检查 Base URL 和网络"`
@@ -101,7 +101,7 @@
 
 | 方法 | 输入 | 输出 | 副作用 |
 |---|---|---|---|
-| `FetchProviderModels(schemeID, providerKey)` | 方案 ID、provider key | `([]Model, error)` | HTTP GET `{baseURL}/models`，仅返回 id 和 name |
+| `FetchProviderModels(schemeID, providerKey)` | 方案 ID、provider key | `([]Model, error)` | HTTP GET `{baseURL}/v1/models`，仅返回 id 和 name |
 | `ImportProviderModels(schemeID, providerKey, models)` | 方案 ID、provider key、Model 切片 | `(int, error)` | 写入 schemes.json，按 ID 跳过已存在项 |
 
 ### 方案导入/导出
@@ -153,9 +153,9 @@
 
 ## 模型拉取（FetchProviderModels）
 
-`fetch.go` 通过 HTTP GET 从 `{provider.BaseURL}/models` 拉取 OpenAI 兼容的模型列表。
+`fetch.go` 通过 HTTP GET 从 `{provider.BaseURL}/v1/models` 拉取 OpenAI 兼容的模型列表。
 
-- **请求**：GET `{baseURL}/models`，`Authorization: Bearer {apiKey}`（apiKey 为空时不发送 Authorization header）
+- **请求**：GET `{baseURL}/v1/models`，`Authorization: Bearer {apiKey}`（apiKey 为空时不发送 Authorization header）
 - **超时**：10 秒
 - **响应解析**：期望 `{"data": [{"id": "...", "name": "..."}]}`，仅填充 ID 和 Name
 - **默认值**：`Reasoning=false, InputText=true, InputImage=false, ContextWindow=256000, MaxTokens=64000, Cost*=0`

@@ -33,13 +33,17 @@ type costJSON struct {
 	CacheWrite *float64 `json:"cacheWrite,omitempty"`
 }
 
-// SerializeToModelsJSON converts a scheme to pi's models.json format
-func SerializeToModelsJSON(scheme *Scheme) ([]byte, error) {
+// SerializeToModelsJSON converts providers to pi's models.json format. Only enabled providers are included.
+func SerializeToModelsJSON(providers []Provider) ([]byte, error) {
 	output := modelsJSONOutput{
 		Providers: make(map[string]providerJSON),
 	}
 
-	for _, prov := range scheme.Providers {
+	for _, prov := range providers {
+		// Skip disabled providers (AC-03, AC-04)
+		if !prov.Enabled {
+			continue
+		}
 		if prov.BuiltIn {
 			// Skip built-in providers with no overrides (AC-20)
 			if prov.APIKey == "" && prov.BaseURL == "" && len(prov.Models) == 0 {

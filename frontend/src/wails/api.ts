@@ -4,39 +4,34 @@
 const wails = window['go']?.main?.App
 
 export interface AppAPI {
-  // Scheme CRUD
-  ListSchemes(): Promise<Scheme[]>
-  CreateScheme(name: string): Promise<Scheme>
-  UpdateScheme(scheme: Scheme): Promise<void>
-  DeleteScheme(id: string): Promise<void>
-  DuplicateScheme(id: string): Promise<Scheme>
-  ActivateScheme(id: string): Promise<void>
-  GetActiveSchemeID(): Promise<string>
+  // Config
+  GetConfig(): Promise<Config>
 
   // Provider
-  AddBuiltInProvider(schemeID: string, providerKey: string, apiKey: string, baseUrl: string): Promise<void>
-  AddCustomProvider(schemeID: string, key: string, baseUrl: string, apiType: string, apiKey: string): Promise<void>
-  UpdateProvider(schemeID: string, provider: Provider): Promise<void>
-  RemoveProvider(schemeID: string, providerKey: string): Promise<void>
+  AddBuiltInProvider(providerKey: string, apiKey: string, baseUrl: string): Promise<void>
+  AddCustomProvider(key: string, baseUrl: string, apiType: string, apiKey: string): Promise<void>
+  UpdateProvider(provider: Provider): Promise<void>
+  SetProviderEnabled(providerKey: string, enabled: boolean): Promise<void>
+  RemoveProvider(providerKey: string): Promise<void>
 
   // Model
-  AddModel(schemeID: string, providerKey: string, model: Model): Promise<void>
-  UpdateModel(schemeID: string, providerKey: string, model: Model): Promise<void>
-  RemoveModel(schemeID: string, providerKey: string, modelID: string): Promise<void>
-  RemoveModels(schemeID: string, providerKey: string, modelIDs: string[]): Promise<number>
-  ReorderModels(schemeID: string, providerKey: string, orderedIDs: string[]): Promise<void>
-  FetchProviderModels(schemeID: string, providerKey: string): Promise<Model[]>
-  ImportProviderModels(schemeID: string, providerKey: string, models: Model[]): Promise<number>
+  AddModel(providerKey: string, model: Model): Promise<void>
+  UpdateModel(providerKey: string, model: Model): Promise<void>
+  RemoveModel(providerKey: string, modelID: string): Promise<void>
+  RemoveModels(providerKey: string, modelIDs: string[]): Promise<number>
+  ReorderModels(providerKey: string, orderedIDs: string[]): Promise<void>
+  FetchProviderModels(providerKey: string): Promise<Model[]>
+  ImportProviderModels(providerKey: string, models: Model[]): Promise<number>
 
   // Provider reorder
-  ReorderProviders(schemeID: string, orderedKeys: string[]): Promise<void>
+  ReorderProviders(orderedKeys: string[]): Promise<void>
 
   // Connectivity
-  TestProviderConnectivity(schemeID: string, providerKey: string): Promise<string>
+  TestProviderConnectivity(providerKey: string): Promise<string>
 
   // Export / Import
-  ExportSchemes(): Promise<void>
-  ImportSchemes(): Promise<void>
+  ExportConfig(): Promise<void>
+  ImportConfig(): Promise<void>
 
   // SSH Sync
   TestSSHConnection(address: string): Promise<{ success: boolean; message: string }>
@@ -49,22 +44,17 @@ export interface AppAPI {
   ListAPITypes(): Promise<string[]>
 }
 
-import type { Scheme, Provider, Model, BuiltInProvider, SyncResult } from '../types'
+import type { Config, Provider, Model, BuiltInProvider, SyncResult } from '../types'
 
 function api(): AppAPI {
   if (wails) return wails as unknown as AppAPI
   // Fallback for browser dev
   return {
-    ListSchemes: () => Promise.resolve([]),
-    CreateScheme: (name: string) => Promise.resolve({ id: '1', name, providers: [] } as Scheme),
-    UpdateScheme: () => Promise.resolve(),
-    DeleteScheme: () => Promise.resolve(),
-    DuplicateScheme: () => Promise.resolve({ id: '2', name: 'dummy', providers: [] } as Scheme),
-    ActivateScheme: () => Promise.resolve(),
-    GetActiveSchemeID: () => Promise.resolve(''),
+    GetConfig: () => Promise.resolve({ providers: [] } as Config),
     AddBuiltInProvider: () => Promise.resolve(),
     AddCustomProvider: () => Promise.resolve(),
     UpdateProvider: () => Promise.resolve(),
+    SetProviderEnabled: () => Promise.resolve(),
     RemoveProvider: () => Promise.resolve(),
     AddModel: () => Promise.resolve(),
     UpdateModel: () => Promise.resolve(),
@@ -75,8 +65,8 @@ function api(): AppAPI {
     ImportProviderModels: () => Promise.resolve(0),
     ReorderProviders: () => Promise.resolve(),
     TestProviderConnectivity: () => Promise.resolve(''),
-    ExportSchemes: () => Promise.resolve(),
-    ImportSchemes: () => Promise.resolve(),
+    ExportConfig: () => Promise.resolve(),
+    ImportConfig: () => Promise.resolve(),
     TestSSHConnection: () => Promise.resolve({ success: false, message: 'dev mode' }),
     SaveSSHAddress: () => Promise.resolve(),
     LoadSSHAddress: () => Promise.resolve(''),

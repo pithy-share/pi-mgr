@@ -9,23 +9,24 @@ import (
 	"time"
 )
 
-// FetchProviderModels calls GET {baseURL}/models and parses OpenAI-compatible
-// List Models response: {"data": [{"id": "...", "name": "...", ...}]}
+// FetchProviderModels calls GET {baseURL}/v1/models and parses OpenAI-compatible
+// List Models response: {"object": "list", "data": [{"id": "...", ...}]}
 // Returns []Model with only id and name populated (rest are zero/default values).
-func (a *App) FetchProviderModels(schemeID, providerKey string) ([]Model, error) {
-	scheme, err := GetScheme(schemeID)
+func (a *App) FetchProviderModels(providerKey string) ([]Model, error) {
+	cfg, err := LoadConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	pidx := findProviderIndex(scheme, providerKey)
+	pidx := findProviderIndex(cfg, providerKey)
 	if pidx < 0 {
 		return nil, fmt.Errorf("provider not found: %s", providerKey)
 	}
-	prov := scheme.Providers[pidx]
+	prov := cfg.Providers[pidx]
 
 	baseURL := strings.TrimRight(prov.BaseURL, "/")
-	url := baseURL + "/models"
+	// Always use OpenAI-compatible /v1/models endpoint regardless of API type
+	url := baseURL + "/v1/models"
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,

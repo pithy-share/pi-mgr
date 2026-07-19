@@ -22,3 +22,13 @@ Thumbs.db
 
 # Temp
 *.tmp
+
+# Task files
+task/
+
+# Stray files
+nul
+frontend/src/nul
+
+# Wailsjs generated
+frontend/wailsjs/

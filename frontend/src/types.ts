@@ -1,6 +1,4 @@
-export interface Scheme {
-  id: string
-  name: string
+export interface Config {
   providers: Provider[]
 }
 
@@ -8,6 +6,7 @@ export interface Provider {
   key: string
   name: string
   builtIn: boolean
+  enabled: boolean
   apiKey: string
   baseUrl: string
   apiType: string

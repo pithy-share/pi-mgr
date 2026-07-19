@@ -1,9 +1,7 @@
 package main
 
-// Scheme is a named collection of providers
-type Scheme struct {
-	ID        string     `json:"id"`
-	Name      string     `json:"name"`
+// Config is the single global configuration
+type Config struct {
 	Providers []Provider `json:"providers"`
 }
 
@@ -12,6 +10,7 @@ type Provider struct {
 	Key     string  `json:"key"`
 	Name    string  `json:"name"`
 	BuiltIn bool    `json:"builtIn"`
+	Enabled bool    `json:"enabled"`
 	APIKey  string  `json:"apiKey"`
 	BaseURL string  `json:"baseUrl"`
 	APIType string  `json:"apiType"`

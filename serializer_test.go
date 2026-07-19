@@ -7,22 +7,19 @@ import (
 
 // Built-in with only baseUrl, no apiKey
 func TestSerializeBuiltIn_OnlyBaseURL(t *testing.T) {
-	scheme := &Scheme{
-		ID:   "test",
-		Name: "test",
-		Providers: []Provider{
-			{
-				Key:     "openai",
-				Name:    "OpenAI",
-				BuiltIn: true,
-				APIKey:  "",
-				BaseURL: "https://proxy.example.com/v1",
-				Models:  []Model{},
-			},
+	providers := []Provider{
+		{
+			Key:     "openai",
+			Name:    "OpenAI",
+			BuiltIn: true,
+			Enabled: true,
+			APIKey:  "",
+			BaseURL: "https://proxy.example.com/v1",
+			Models:  []Model{},
 		},
 	}
 
-	data, err := SerializeToModelsJSON(scheme)
+	data, err := SerializeToModelsJSON(providers)
 	if err != nil {
 		t.Fatalf("SerializeToModelsJSON failed: %v", err)
 	}
@@ -47,22 +44,19 @@ func TestSerializeBuiltIn_OnlyBaseURL(t *testing.T) {
 
 // AC-12: Built-in provider with only apiKey has no models/api in output
 func TestSerializeBuiltIn_OnlyAPIKey(t *testing.T) {
-	scheme := &Scheme{
-		ID:   "test",
-		Name: "test",
-		Providers: []Provider{
-			{
-				Key:     "openai",
-				Name:    "OpenAI",
-				BuiltIn: true,
-				APIKey:  "sk-test123",
-				BaseURL: "",
-				Models:  []Model{},
-			},
+	providers := []Provider{
+		{
+			Key:     "openai",
+			Name:    "OpenAI",
+			BuiltIn: true,
+			Enabled: true,
+			APIKey:  "sk-test123",
+			BaseURL: "",
+			Models:  []Model{},
 		},
 	}
 
-	data, err := SerializeToModelsJSON(scheme)
+	data, err := SerializeToModelsJSON(providers)
 	if err != nil {
 		t.Fatalf("SerializeToModelsJSON failed: %v", err)
 	}
@@ -89,22 +83,19 @@ func TestSerializeBuiltIn_OnlyAPIKey(t *testing.T) {
 
 // AC-20: Skip built-in provider with no apiKey, baseUrl, or models
 func TestSerializeBuiltIn_SkipEmpty(t *testing.T) {
-	scheme := &Scheme{
-		ID:   "test",
-		Name: "test",
-		Providers: []Provider{
-			{
-				Key:     "anthropic",
-				Name:    "Anthropic",
-				BuiltIn: true,
-				APIKey:  "",
-				BaseURL: "",
-				Models:  []Model{},
-			},
+	providers := []Provider{
+		{
+			Key:     "anthropic",
+			Name:    "Anthropic",
+			BuiltIn: true,
+			Enabled: true,
+			APIKey:  "",
+			BaseURL: "",
+			Models:  []Model{},
 		},
 	}
 
-	data, err := SerializeToModelsJSON(scheme)
+	data, err := SerializeToModelsJSON(providers)
 	if err != nil {
 		t.Fatalf("SerializeToModelsJSON failed: %v", err)
 	}
@@ -121,22 +112,19 @@ func TestSerializeBuiltIn_SkipEmpty(t *testing.T) {
 
 // AC-12: Built-in with apiKey + baseUrl → both present, no api field
 func TestSerializeBuiltIn_WithBaseURL(t *testing.T) {
-	scheme := &Scheme{
-		ID:   "test",
-		Name: "test",
-		Providers: []Provider{
-			{
-				Key:     "openai",
-				Name:    "OpenAI",
-				BuiltIn: true,
-				APIKey:  "sk-test",
-				BaseURL: "https://proxy.example.com/v1",
-				Models:  []Model{},
-			},
+	providers := []Provider{
+		{
+			Key:     "openai",
+			Name:    "OpenAI",
+			BuiltIn: true,
+			Enabled: true,
+			APIKey:  "sk-test",
+			BaseURL: "https://proxy.example.com/v1",
+			Models:  []Model{},
 		},
 	}
 
-	data, err := SerializeToModelsJSON(scheme)
+	data, err := SerializeToModelsJSON(providers)
 	if err != nil {
 		t.Fatalf("SerializeToModelsJSON failed: %v", err)
 	}
@@ -155,23 +143,20 @@ func TestSerializeBuiltIn_WithBaseURL(t *testing.T) {
 
 // AC-21: Built-in with custom models → models appear in output
 func TestSerializeBuiltIn_WithModels(t *testing.T) {
-	scheme := &Scheme{
-		ID:   "test",
-		Name: "test",
-		Providers: []Provider{
-			{
-				Key:     "openai",
-				Name:    "OpenAI",
-				BuiltIn: true,
-				APIKey:  "sk-test",
-				Models: []Model{
-					{ID: "gpt-4-custom", Name: "GPT-4 Custom", InputText: true},
-				},
+	providers := []Provider{
+		{
+			Key:     "openai",
+			Name:    "OpenAI",
+			BuiltIn: true,
+			Enabled: true,
+			APIKey:  "sk-test",
+			Models: []Model{
+				{ID: "gpt-4-custom", Name: "GPT-4 Custom", InputText: true},
 			},
 		},
 	}
 
-	data, err := SerializeToModelsJSON(scheme)
+	data, err := SerializeToModelsJSON(providers)
 	if err != nil {
 		t.Fatalf("SerializeToModelsJSON failed: %v", err)
 	}
@@ -190,25 +175,22 @@ func TestSerializeBuiltIn_WithModels(t *testing.T) {
 
 // AC-15: Custom provider must have baseUrl + api + models
 func TestSerializeCustomProvider(t *testing.T) {
-	scheme := &Scheme{
-		ID:   "test",
-		Name: "test",
-		Providers: []Provider{
-			{
-				Key:     "my-proxy",
-				Name:    "my-proxy",
-				BuiltIn: false,
-				APIKey:  "sk-custom",
-				BaseURL: "https://my-api.example.com/v1",
-				APIType: "openai-completions",
-				Models: []Model{
-					{ID: "my-model", InputText: true},
-				},
+	providers := []Provider{
+		{
+			Key:     "my-proxy",
+			Name:    "my-proxy",
+			BuiltIn: false,
+			Enabled: true,
+			APIKey:  "sk-custom",
+			BaseURL: "https://my-api.example.com/v1",
+			APIType: "openai-completions",
+			Models: []Model{
+				{ID: "my-model", InputText: true},
 			},
 		},
 	}
 
-	data, err := SerializeToModelsJSON(scheme)
+	data, err := SerializeToModelsJSON(providers)
 	if err != nil {
 		t.Fatalf("SerializeToModelsJSON failed: %v", err)
 	}
@@ -231,27 +213,6 @@ func TestSerializeCustomProvider(t *testing.T) {
 	}
 	if prov.APIKey == "" {
 		t.Error("custom provider with apiKey should have apiKey in output")
-	}
-}
-
-// AC-24: Validate scheme name not empty
-func TestValidateScheme_EmptyName(t *testing.T) {
-	scheme := &Scheme{Name: ""}
-	errs := ValidateScheme(scheme)
-	if len(errs) == 0 {
-		t.Error("expected error for empty scheme name (AC-24)")
-	}
-
-	scheme.Name = "   "
-	errs = ValidateScheme(scheme)
-	if len(errs) == 0 {
-		t.Error("expected error for whitespace-only scheme name (AC-24)")
-	}
-
-	scheme.Name = "valid"
-	errs = ValidateScheme(scheme)
-	if len(errs) != 0 {
-		t.Error("expected no error for valid scheme name")
 	}
 }
 

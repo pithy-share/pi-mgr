@@ -52,6 +52,7 @@ export namespace main {
 	    key: string;
 	    name: string;
 	    builtIn: boolean;
+	    enabled: boolean;
 	    apiKey: string;
 	    baseUrl: string;
 	    apiType: string;
@@ -66,6 +67,7 @@ export namespace main {
 	        this.key = source["key"];
 	        this.name = source["name"];
 	        this.builtIn = source["builtIn"];
+	        this.enabled = source["enabled"];
 	        this.apiKey = source["apiKey"];
 	        this.baseUrl = source["baseUrl"];
 	        this.apiType = source["apiType"];
@@ -90,33 +92,15 @@ export namespace main {
 		    return a;
 		}
 	}
-	export class SSHConnectionResult {
-	    success: boolean;
-	    message: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new SSHConnectionResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.success = source["success"];
-	        this.message = source["message"];
-	    }
-	}
-	export class Scheme {
-	    id: string;
-	    name: string;
+	export class Config {
 	    providers: Provider[];
 	
 	    static createFrom(source: any = {}) {
-	        return new Scheme(source);
+	        return new Config(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.name = source["name"];
 	        this.providers = this.convertValues(source["providers"], Provider);
 	    }
 	
@@ -137,6 +121,22 @@ export namespace main {
 		    }
 		    return a;
 		}
+	}
+	
+	
+	export class SSHConnectionResult {
+	    success: boolean;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SSHConnectionResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.message = source["message"];
+	    }
 	}
 	export class SyncItemStatus {
 	    name: string;

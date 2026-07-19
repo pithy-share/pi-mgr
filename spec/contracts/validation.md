@@ -75,8 +75,9 @@ func ValidateModel(m *Model, existingModels []Model) []string
 
 | 方法 | 条件 | 错误 |
 |---|---|---|
-| `TestProviderConnectivity` | API 类型非 `openai-completions`/`openai-responses`/`azure-openai-responses` | "该 API 类型暂不支持连通性测试" |
 | `TestProviderConnectivity` | BaseURL 为空或仅空白 | "请先配置 Base URL" |
+
+**注意**：所有 API 类型均使用 OpenAI 兼容的 `/v1/models` 端点，不再按 API 类型区分。
 
 ## 不在校验范围的事项（明确排除）
 
