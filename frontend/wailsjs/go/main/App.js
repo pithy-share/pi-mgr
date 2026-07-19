@@ -22,8 +22,28 @@ export function FetchProviderModels(arg1) {
   return window['go']['main']['App']['FetchProviderModels'](arg1);
 }
 
+export function GetCbmRules() {
+  return window['go']['main']['App']['GetCbmRules']();
+}
+
 export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
+}
+
+export function GetPiPackages() {
+  return window['go']['main']['App']['GetPiPackages']();
+}
+
+export function GetPiVersion() {
+  return window['go']['main']['App']['GetPiVersion']();
+}
+
+export function GetRemotePiPackages(arg1) {
+  return window['go']['main']['App']['GetRemotePiPackages'](arg1);
+}
+
+export function GetRemotePiVersion(arg1) {
+  return window['go']['main']['App']['GetRemotePiVersion'](arg1);
 }
 
 export function ImportConfig() {
@@ -32,6 +52,14 @@ export function ImportConfig() {
 
 export function ImportProviderModels(arg1, arg2) {
   return window['go']['main']['App']['ImportProviderModels'](arg1, arg2);
+}
+
+export function InstallPiPackage(arg1) {
+  return window['go']['main']['App']['InstallPiPackage'](arg1);
+}
+
+export function InstallRemotePiPackage(arg1, arg2) {
+  return window['go']['main']['App']['InstallRemotePiPackage'](arg1, arg2);
 }
 
 export function ListAPITypes() {
@@ -54,8 +82,16 @@ export function RemoveModels(arg1, arg2) {
   return window['go']['main']['App']['RemoveModels'](arg1, arg2);
 }
 
+export function RemovePiPackage(arg1) {
+  return window['go']['main']['App']['RemovePiPackage'](arg1);
+}
+
 export function RemoveProvider(arg1) {
   return window['go']['main']['App']['RemoveProvider'](arg1);
+}
+
+export function RemoveRemotePiPackage(arg1, arg2) {
+  return window['go']['main']['App']['RemoveRemotePiPackage'](arg1, arg2);
 }
 
 export function ReorderModels(arg1, arg2) {
@@ -86,10 +122,34 @@ export function TestSSHConnection(arg1) {
   return window['go']['main']['App']['TestSSHConnection'](arg1);
 }
 
+export function UpdateAllPiPackages() {
+  return window['go']['main']['App']['UpdateAllPiPackages']();
+}
+
 export function UpdateModel(arg1, arg2) {
   return window['go']['main']['App']['UpdateModel'](arg1, arg2);
 }
 
+export function UpdatePiPackage(arg1) {
+  return window['go']['main']['App']['UpdatePiPackage'](arg1);
+}
+
+export function UpdatePiSelf() {
+  return window['go']['main']['App']['UpdatePiSelf']();
+}
+
 export function UpdateProvider(arg1) {
   return window['go']['main']['App']['UpdateProvider'](arg1);
+}
+
+export function UpdateRemoteAllPiPackages(arg1) {
+  return window['go']['main']['App']['UpdateRemoteAllPiPackages'](arg1);
+}
+
+export function UpdateRemotePiPackage(arg1, arg2) {
+  return window['go']['main']['App']['UpdateRemotePiPackage'](arg1, arg2);
+}
+
+export function UpdateRemotePiSelf(arg1) {
+  return window['go']['main']['App']['UpdateRemotePiSelf'](arg1);
 }

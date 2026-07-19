@@ -12,11 +12,25 @@ export function ExportConfig():Promise<void>;
 
 export function FetchProviderModels(arg1:string):Promise<Array<main.Model>>;
 
+export function GetCbmRules():Promise<string>;
+
 export function GetConfig():Promise<main.Config>;
+
+export function GetPiPackages():Promise<string>;
+
+export function GetPiVersion():Promise<string>;
+
+export function GetRemotePiPackages(arg1:string):Promise<string>;
+
+export function GetRemotePiVersion(arg1:string):Promise<string>;
 
 export function ImportConfig():Promise<void>;
 
 export function ImportProviderModels(arg1:string,arg2:Array<main.Model>):Promise<number>;
+
+export function InstallPiPackage(arg1:string):Promise<string>;
+
+export function InstallRemotePiPackage(arg1:string,arg2:string):Promise<string>;
 
 export function ListAPITypes():Promise<Array<string>>;
 
@@ -28,7 +42,11 @@ export function RemoveModel(arg1:string,arg2:string):Promise<void>;
 
 export function RemoveModels(arg1:string,arg2:Array<string>):Promise<number>;
 
+export function RemovePiPackage(arg1:string):Promise<string>;
+
 export function RemoveProvider(arg1:string):Promise<void>;
+
+export function RemoveRemotePiPackage(arg1:string,arg2:string):Promise<string>;
 
 export function ReorderModels(arg1:string,arg2:Array<string>):Promise<void>;
 
@@ -44,6 +62,18 @@ export function TestProviderConnectivity(arg1:string):Promise<string>;
 
 export function TestSSHConnection(arg1:string):Promise<main.SSHConnectionResult>;
 
+export function UpdateAllPiPackages():Promise<string>;
+
 export function UpdateModel(arg1:string,arg2:main.Model):Promise<void>;
 
+export function UpdatePiPackage(arg1:string):Promise<string>;
+
+export function UpdatePiSelf():Promise<string>;
+
 export function UpdateProvider(arg1:main.Provider):Promise<void>;
+
+export function UpdateRemoteAllPiPackages(arg1:string):Promise<string>;
+
+export function UpdateRemotePiPackage(arg1:string,arg2:string):Promise<string>;
+
+export function UpdateRemotePiSelf(arg1:string):Promise<string>;
