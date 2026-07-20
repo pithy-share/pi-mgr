@@ -59,15 +59,15 @@
       </div>
     </div>
 
-    <!-- CBM usage rules (click to copy) -->
+    <!-- Codebase Memory usage rules (click to copy) -->
     <div class="card" style="margin-bottom:16px;padding:10px 16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-size:14px;">CBM 使用规则</span>
-        <button class="btn-secondary btn-small" @click="handleCopyCbm" :disabled="loadingCbm">
-          {{ loadingCbm ? '加载中…' : (copiedCbm ? '已复制' : '复制到剪贴板') }}
+        <span style="font-size:14px;">Codebase Memory 使用规则</span>
+        <button class="btn-secondary btn-small" @click="handleCopyCodebaseMemory" :disabled="loadingCodebaseMemory">
+          {{ loadingCodebaseMemory ? '加载中…' : (copiedCodebaseMemory ? '已复制' : '复制到剪贴板') }}
         </button>
       </div>
-      <div v-if="cbmError" style="margin-top:6px;font-size:12px;color:var(--danger);">{{ cbmError }}</div>
+      <div v-if="codebaseMemoryError" style="margin-top:6px;font-size:12px;color:var(--danger);">{{ codebaseMemoryError }}</div>
     </div>
 
     <!-- Packages section -->
@@ -226,7 +226,7 @@ const confirmRemove = ref('')
 const recommendedPkgs = [
   'npm:@vanillagreen/pi-codex-minimal-tools',
   'npm:@gotgenes/pi-subagents',
-  'npm:pi-cbm',
+  'npm:pi-mcp-adapter',
 ]
 const installingPkg = ref('')
 const installResult = ref('')
@@ -320,26 +320,26 @@ async function handleRemovePrompt(name: string) {
   }
 }
 
-// CBM rules
-const loadingCbm = ref(false)
-const copiedCbm = ref(false)
-const cbmError = ref('')
-let cbmTimer: ReturnType<typeof setTimeout> | null = null
+// Codebase Memory rules
+const loadingCodebaseMemory = ref(false)
+const copiedCodebaseMemory = ref(false)
+const codebaseMemoryError = ref('')
+let codebaseMemoryTimer: ReturnType<typeof setTimeout> | null = null
 
-async function handleCopyCbm() {
-  loadingCbm.value = true
-  cbmError.value = ''
+async function handleCopyCodebaseMemory() {
+  loadingCodebaseMemory.value = true
+  codebaseMemoryError.value = ''
   try {
     const a = api()
-    const rules = await a.GetCbmRules()
+    const rules = await a.GetCodebaseMemoryRules()
     await navigator.clipboard.writeText(rules)
-    copiedCbm.value = true
-    if (cbmTimer) clearTimeout(cbmTimer)
-    cbmTimer = setTimeout(() => { copiedCbm.value = false }, 3000)
+    copiedCodebaseMemory.value = true
+    if (codebaseMemoryTimer) clearTimeout(codebaseMemoryTimer)
+    codebaseMemoryTimer = setTimeout(() => { copiedCodebaseMemory.value = false }, 3000)
   } catch (e: any) {
-    cbmError.value = '复制失败'
+    codebaseMemoryError.value = '复制失败'
   } finally {
-    loadingCbm.value = false
+    loadingCodebaseMemory.value = false
   }
 }
 

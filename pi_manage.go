@@ -15,11 +15,11 @@ import (
 	"time"
 )
 
-//go:embed pi/cbm.md
-var piCbmRules string
-
 //go:embed pi/agent/prompts
 var builtinPromptsFS embed.FS
+
+//go:embed pi/codebase-memory.md
+var piCodebaseMemoryRules string
 
 var (
 	piLog          *log.Logger
@@ -200,10 +200,11 @@ func (a *App) InstallRemotePiPackage(sshAddress string, source string) (string, 
 	return checkResult(out, err, "远程安装插件失败")
 }
 
-// GetCbmRules returns the CBM usage rules from pi/cbm.md.
-func (a *App) GetCbmRules() (string, error) {
-	return piCbmRules, nil
+// GetCodebaseMemoryRules returns the Codebase Memory usage rules from pi/codebase-memory.md.
+func (a *App) GetCodebaseMemoryRules() (string, error) {
+	return piCodebaseMemoryRules, nil
 }
+
 // =============================================================================
 // Built-in Prompt Templates Management
 // =============================================================================

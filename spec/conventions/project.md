@@ -32,7 +32,7 @@ pi-mgr/                       # Wails 项目根（即当前仓库根）
 ├── pi_manage.go              # Pi CLI 管理（版本、插件、提示词）+ //go:embed 内置提示词
 ├── wails.json                # Wails 项目配置
 ├── pi/                       # pi 相关内置资源
-│   ├── cbm.md                # CBM 使用规则（//go:embed）
+│   ├── codebase-memory.md    # Codebase Memory 使用规则（//go:embed）
 │   └── agent/prompts/        # 内置提示词模板（//go:embed, 4 个 .md）
 ├── frontend/                 # Vue 3 前端
 │   ├── src/
