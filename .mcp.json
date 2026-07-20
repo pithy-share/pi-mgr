@@ -1,0 +1,26 @@
+{
+     "mcpServers": {
+       "codebase-memory": {
+         "command": "C:\\Users\\zyong\\.local\\bin\\codebase-memory-mcp.exe",
+         "args": [],
+         "lifecycle": "keep-alive",
+         "requestTimeoutMs": 300000,
+         "directTools": [
+           "index_repository",
+           "index_status",
+           "list_projects",
+           "search_graph",
+           "query_graph",
+           "trace_path",
+           "get_code_snippet",
+           "get_graph_schema",
+           "get_architecture",
+           "search_code",
+           "detect_changes"
+         ],
+         "excludeTools": [
+           "delete_project"
+         ]
+       }
+     }
+   }

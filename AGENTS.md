@@ -10,34 +10,16 @@ pi-mgr 是 Pi Coding Agent 的 Windows 桌面配置管理工具（Go + Wails v2 
 - **不导入现有 models.json**：v1 从零创建方案，不读取已有 pi 配置
 - **多实例**：允许，最后激活者生效；不做冲突检测
 
-## cbm 使用规则
+## Codebase Memory 使用规则
 
-- **代码探索走 cbm**：先定位后精读，不在 cbm 拿到位置前 `read` 代码文件
-- **`read` 放行**：spec/*.md、Makefile、.gitmodules 等非代码文件直接读
+- 分析架构、流程、调用链、数据流、影响面或跨文件改动时，先用 `codebase-memory` 收敛范围，再读取当前工作区源码；已知精确位置的单文件小改可直接读文件。
+- 开始前用 `list_projects`/`index_status` 确认索引为 `ready`，并比较索引 branch/HEAD 与当前 Git 状态；索引过期或存在未提交修改时，图谱只用于发现候选关系。
+- 按目标选择工具：`get_architecture` 看局部架构与入口，`search_graph` 找符号和实现，`trace_path` 查调用者/下游/参数传播，`search_code` 查宏、事件、注册表和文本，复杂聚合才用 `query_graph`。
+- 查询应限定目录、标签和深度；检查 `has_more`、`total`、`limit` 等截断信号，必要时缩小条件或翻页，不能把首屏结果当全集。
+- 修改前用 inbound `trace_path` 检查调用者和影响面；修改后用当前源码搜索旧引用、漏注册和相关调用点，不要求为未提交改动重建索引。
+- 图谱是导航证据，不是最终事实。条件编译、宏、函数指针、回调、异步队列、timer/ISR、资源所有权、构建配置、忽略目录和未提交代码，必须通过当前源码、测试与项目文档核验。
+- 工具不可用、项目未索引或查询失败时，退回 `rg`/直接读文件并说明限制；除非用户明确要求，不自动触发全仓索引。
 
-```
-get_architecture / search_graph           → 定向（拿 qualified_name）
-search_and_read_symbols                   → 搜索+源码一步到位（探索首选）
-         ↓
-get_code_snippet / get_code_snippets      → 精读（已知 qualified_name 时）
-resolve_symbol / read_symbol              → 已知符号名消歧+读取
-         ↓
-trace_path                                → 追踪调用链/数据流
-         ↓
-search_code                               → 精确文本（宏、配置键、字面量）
-         ↓
-read                                      → 回退（仅 spec、配置、或 cbm 反复失败时）
-```
-
-核心反模式：**search_graph 返回了结果，别忽略它去 read 整个文件，对 qualified_name 调 get_code_snippet。**
-
-选工具口诀：
-- 知道符号名但不确定在哪 → `resolve_symbol` 消歧，确认后 `read_symbol` 读源码
-- 概念搜索想直接看代码 → `search_and_read_symbols`，省一轮往返
-- 已知精确 qualified_name → `get_code_snippet` 或批量 `get_code_snippets`
-- 追踪谁调了谁、数据怎么流 → `trace_path`，不用手动 grep 调用链
-- 搜宏、配置键、日志字符串、字面量 → `search_code`，不是 `search_graph`
-- 批量消歧读多个符号 → `read_symbols`，加 `file_path` 或 `parent_class` 消歧
 
 ## 改动信号 → 知识域路由
 
