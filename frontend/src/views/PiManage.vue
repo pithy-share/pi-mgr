@@ -70,6 +70,18 @@
       <div v-if="codebaseMemoryError" style="margin-top:6px;font-size:12px;color:var(--danger);">{{ codebaseMemoryError }}</div>
     </div>
 
+    <!-- Codebase Memory MCP config (click to copy) -->
+    <div class="card" style="margin-bottom:16px;padding:10px 16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:14px;">Codebase Memory MCP 配置</span>
+        <span style="font-size:11px;color:var(--text-secondary);">.mcp.json</span>
+        <button class="btn-secondary btn-small" @click="handleCopyMCPConfig" :disabled="loadingMCPConfig">
+          {{ loadingMCPConfig ? '加载中…' : (copiedMCPConfig ? '已复制' : '复制到剪贴板') }}
+        </button>
+      </div>
+      <div v-if="mcpConfigError" style="margin-top:6px;font-size:12px;color:var(--danger);">{{ mcpConfigError }}</div>
+    </div>
+
     <!-- Packages section -->
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -340,6 +352,29 @@ async function handleCopyCodebaseMemory() {
     codebaseMemoryError.value = '复制失败'
   } finally {
     loadingCodebaseMemory.value = false
+  }
+}
+
+// Codebase Memory MCP config
+const loadingMCPConfig = ref(false)
+const copiedMCPConfig = ref(false)
+const mcpConfigError = ref('')
+let mcpConfigTimer: ReturnType<typeof setTimeout> | null = null
+
+async function handleCopyMCPConfig() {
+  loadingMCPConfig.value = true
+  mcpConfigError.value = ''
+  try {
+    const a = api()
+    const config = await a.GetCodebaseMemoryMCPConfig()
+    await navigator.clipboard.writeText(config)
+    copiedMCPConfig.value = true
+    if (mcpConfigTimer) clearTimeout(mcpConfigTimer)
+    mcpConfigTimer = setTimeout(() => { copiedMCPConfig.value = false }, 3000)
+  } catch (e: any) {
+    mcpConfigError.value = '复制失败'
+  } finally {
+    loadingMCPConfig.value = false
   }
 }
 

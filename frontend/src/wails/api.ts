@@ -65,6 +65,7 @@ export interface AppAPI {
 
   // Codebase Memory
   GetCodebaseMemoryRules(): Promise<string>
+  GetCodebaseMemoryMCPConfig(): Promise<string>
 
   // Built-in Prompt Templates
   ListBuiltInPrompts(): Promise<PromptTemplate[]>
@@ -117,6 +118,7 @@ function api(): AppAPI {
     InstallPiPackage: () => Promise.resolve('dev mode: install skipped'),
     InstallRemotePiPackage: () => Promise.resolve('dev mode: remote install skipped'),
     GetCodebaseMemoryRules: () => Promise.resolve('## Codebase Memory 使用规则\n\n开发模式示例内容'),
+    GetCodebaseMemoryMCPConfig: () => Promise.resolve('{\n  "mcpServers": {\n    "codebase-memory": {\n      "command": "C:\\\\Users\\\\Administrator\\\\\\.local\\\\bin\\\\codebase-memory-mcp.exe",\n      "args": [],\n      "lifecycle": "keep-alive",\n      "requestTimeoutMs": 300000,\n      "directTools": [\n        "index_repository",\n        "index_status"\n      ],\n      "excludeTools": [\n        "delete_project"\n      ]\n    }\n  }\n}'),
     // Built-in Prompt Templates
     ListBuiltInPrompts: () => Promise.resolve([
       { name: 'implement', description: '按任务计划实现、验证并将结果保存到同一任务目录', argumentHint: '<task/<task-name>/plan.md>', installed: false },

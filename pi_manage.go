@@ -21,6 +21,9 @@ var builtinPromptsFS embed.FS
 //go:embed pi/codebase-memory.md
 var piCodebaseMemoryRules string
 
+//go:embed pi/codebase-memory-mcp.md
+var piCodebaseMemoryMCPConfig string
+
 var (
 	piLog          *log.Logger
 	ansiEscapeRe = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
@@ -203,6 +206,11 @@ func (a *App) InstallRemotePiPackage(sshAddress string, source string) (string, 
 // GetCodebaseMemoryRules returns the Codebase Memory usage rules from pi/codebase-memory.md.
 func (a *App) GetCodebaseMemoryRules() (string, error) {
 	return piCodebaseMemoryRules, nil
+}
+
+// GetCodebaseMemoryMCPConfig returns the MCP server config JSON for codebase-memory.
+func (a *App) GetCodebaseMemoryMCPConfig() (string, error) {
+	return piCodebaseMemoryMCPConfig, nil
 }
 
 // =============================================================================
